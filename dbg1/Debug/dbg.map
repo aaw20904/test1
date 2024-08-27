@@ -1,0 +1,27 @@
+
+Segment List
+------------
+
+d:\stm8\dbg1\main.asm[1]    6-  666      8080 -     8353                 'rom'  [text]
+d:\stm8\dbg1\main.asm[2]  667-  700      8000 -     807F                 'vectit'  [data]
+
+
+Class List
+----------
+
+0 '        ram0'   byte from        0 to FFFFFFFF (lim       FF) =  0% V
+0 '        ram1'   byte from      100 to       FF (lim      1FF) =  0% V
+0 '       stack'   byte from      200 to      1FF (lim      3FF) =  0% V
+0 '      eeprom'   byte from     4000 to     3FFF (lim     407F) =  0% V
+0 '         rom'   byte from     8080 to     8353 (lim     9FFF) =  8% C
+0 '      vectit'   byte from     8000 to     807F (lim     807F) =100% S
+
+
+
+External Label list
+-------------------
+
+Symbol Name                       Value     Scope  Def(line)
+
+
+0 labels
