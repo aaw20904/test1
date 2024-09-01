@@ -9,7 +9,9 @@
 
 'eeprom' V
 
-'rom' C
+'rom' CS
 
 'vectit' S
+
+'USER_RAM' V
 

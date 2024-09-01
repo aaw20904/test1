@@ -2,8 +2,28 @@ stm8/
 
 	#include "mapping.inc"
 	#include "stm8s003f3.inc"
-
+	
+	segment   at 0000 'USER_RAM'
+	;--USER VARIABLES--
+  ;pointer for receiver	$0000
+_RxPtr_ equ $0000
+	;pointer for transmitter $0002
+_TxPtr_ equ $0002
+ ; bit0-sybol has been received
+ ; bit1 - it is a sybol for transmission
+_semaphore equ $0004
+  ;bufers for transmission and reception
+_RxBuffer32 equ $0010
+  #define  _RxBuffer32_end $002f ;last element
+_TxBuffer32 equ $0030
+  #define  _TxBuffer32_end $004f ; last element
+_received_char equ $0050
+  ;stringbuffer $0004
+str1  equ $0051		
+	;-----------------
 	segment 'rom'     
+_hello STRING "_PUTIN HUJLO",'\n','\r'
+
 main.l
 	; initialize SP
 	ldw X,#stack_end
@@ -47,6 +67,13 @@ clear_stack.l
 ; | | | / __|/ _ \ '__| | '_ ` _ \ / _` | | '_ \ 
 ; | |_| \__ \  __/ |    | | | | | | (_| | | | | |
 ;  \__,_|___/\___|_|    |_| |_| |_|\__,_|_|_| |_|
+
+  LDW X, #_TxBuffer32;
+;--global pointer UART Rx bufffer init
+;[*P=$0000][$0002...$0012]
+  LD A, str1;
+  LDW X, #$0002
+  LDW $0000, X
   LD A, #$00
 	PUSH A
 	CALL clkSetHsiDivider
@@ -58,8 +85,8 @@ clear_stack.l
 	;--turn on quartz
 	CALL clkSwitchToCrystal
 	 
-	;--PC6-output 
-	LD A, #$D8; 3,4,6,7  
+	;--PC3,4-output 
+	LD A, #$38; 3,4,5 
 	LD PC_DDR, A
 	LD PC_CR1, A
 	LD PC_CR2, A
@@ -69,95 +96,76 @@ clear_stack.l
 	LD PA_CR1, A
 	LD PA_CR2, A
 	;--D
-		LD A, #$00;  
-	LD PD_DDR, A
-	LD PD_CR1, A
-	LD PD_CR2, A
-  
-
-	 
-	;@presc16,  
-	;@base16, -> base of counter, ARRL
-	;@comp16, -> pulse width, CCR1 content
-	;@mode8,  -> (CCMR) : $60 PWM_MODE1
-							       ;$70 iPWM_MODE2
-						;additional:  $04 fast, $08 preload en.
-	;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	;@preload8  ->  $80 preload enable, CR1 content
-	 
-	 
-	 LDW X, #$000F	;@presc16,  
-	 PUSHW X
-	 LDW X, #$03FF	;@base16, -> base of counter, ARRL
-	 PUSHW X
-	 LDW X, #$000f;@comp16, -> capture compare CCR1 content
-	 PUSHW X
-	 LD A, #$60	;@mode8,  -> (CCMR)PIN  beheviavour: $10 active on match
-	 PUSH A
-	 LD A, #$00;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	 PUSH A
-	 LD A ,#$00;@preload8  ->  $80 preload enable, CR1 content
-	 PUSH A	 
-   call tim1PwmCh2Setup
-   ADDW SP, #$09
-	 	 LDW X, #$000F	;@presc16,  
-	 PUSHW X
-	 LDW X, #$03FF	;@base16, -> base of counter, ARRL
-	 PUSHW X
-	 LDW X, #$000f;@comp16, -> capture compare CCR1 content
-	 PUSHW X
-	 LD A, #$60	;@mode8,  -> (CCMR)PIN  beheviavour: $10 active on match
-	 PUSH A
-	 LD A, #$00;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	 PUSH A
-	 LD A ,#$00;@preload8  ->  $80 preload enable, CR1 content
-	 PUSH A	 
-   call tim1PwmCh3Setup
-   ADDW SP, #$09
-	 	 LDW X, #$000F	;@presc16,  
-	 PUSHW X
-	 LDW X, #$03FF	;@base16, -> base of counter, ARRL
-	 PUSHW X
-	 LDW X, #$000f;@comp16, -> capture compare CCR1 content
-	 PUSHW X
-	 LD A, #$60	;@mode8,  -> (CCMR)PIN  beheviavour: $10 active on match
-	 PUSH A
-	 LD A, #$00;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	 PUSH A
-	 LD A ,#$00;@preload8  ->  $80 preload enable, CR1 content
-	 PUSH A	 
-   call tim1PwmCh4Setup
-   ADDW SP, #$09
-	 	 LDW X, #$000F	;@presc16,  
-	 PUSHW X
-	 LDW X, #$03FF	;@base16, -> base of counter, ARRL
-	 PUSHW X
-	 LDW X, #$000f;@comp16, -> capture compare CCR1 content
-	 PUSHW X
-	 LD A, #$60	;@mode8,  -> (CCMR)PIN  beheviavour: $10 active on match
-	 PUSH A
-	 LD A, #$00;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	 PUSH A
-	 LD A ,#$00;@preload8  ->  $80 preload enable, CR1 content
-	 PUSH A	 
-   call tim1PwmCh1Setup
-   ADDW SP, #$09
-	  
-	 ;----ADC
-	LD A, #$06;@channel8, $00->AIN0, $01->AIN1, #$0F->AIN15
+		LD A, #$20;  
+	LD PD_DDR, A;   PD5 output,
+	BSET PD_ODR, #$05 ; high level PD5 
+	LD PD_CR1, A; push-pull,
+	LD PD_CR1, A; up to 10MHz.
+	;dumy delay
+   NOP
+	 NOP
+	 NOP
+ 
+	
+	;@baudRate16, divider
+  LDW X, #$0209
+	PUSHW X
+;@dataLength8, ;
+	;$10->9bits (1stop 1 start) 
+	;, $00->8bits (set  ;manually below)
+	LD A, #$00
 	PUSH A
-	LD A, #$00;@prescaler, $00->/2, $10->/3, $20->/4, $
+;@stopBits8  $00->1bit, $20->2bits
+  LD A, #$00
 	PUSH A
-  CALL adcSingleScanModeSetup
-	ADDW SP, #$02
-	;---interrupt enable
-    LD A, #$01; UIE
-	 LD TIM1_IER, A
+	LD A, #$00 ;@parity8, $00-disable, 
+	;$04-enable: ($02-odd OR $00-even)
+	PUSH A
+	CALL  uart1DuplexSetupIT
+;-----------
+;SP +5
+  ADDW SP, #$05
+	LD A,#$31
+	nop
+	nop
+  nop
+	nop
 
-
+ 
+	 
+   ;--L     o o    Pppp
+	 ;  L    o   o   P   p
+	 ;  L    o   o   Ppp 
+	 ;  L L   o o    P
+	 ;;init pointers
+	 LDW X, #_RxBuffer32
+	 LDW _RxPtr_, X
+	 LDW X, #_TxBuffer32
+	 LDW _TxPtr_, X
 infinite_loop.l
-		
-				wfi
+			;are there  symbol?
+			BTJF _semaphore, #$0, _no_sym_reeived
+			;when symbol received:
+			BRES _semaphore, #$0 ;clear semaphore
+			LDW X, _RxPtr_ ; load a pointer
+			LD A, _received_char ;read symbol from Rx
+			LD (X), A ; store symbol in an arrray
+			;when the symbol last - assign to pointer first cell
+			LDW Y, X
+			SUBW Y, #_RxBuffer32_end 
+			JREQ _last_rx_item
+			;when character (byte) not last - increment & store pointer
+			INCW X
+			LDW _RxPtr_, X
+			JP _no_sym_reeived    
+_last_rx_item
+      ;when the symbol is  last - clear pointer
+			LDW X, #_RxBuffer32
+			LDW _RxPtr_, X
+			;LD UART1_DR, A
+_no_sym_reeived  
+
+				WFI
 	jra infinite_loop
      
 
@@ -170,366 +178,214 @@ infinite_loop.l
 ; | ||  __/\__ \ |_ 
 ;  \__\___||___/\__|
 ;-------------------------------
-	;--TEST PASSED!
-		;===PROCEDURE 'tim1PwmCh1Setup'
-  ;@presc16,  
-	;@base16, -> base of counter, ARRL
-	;@comp16, -> pulse width, CCR1 content
-	;@mode8,  -> (CCMR) : $60 PWM_MODE1
-							       ;$70 iPWM_MODE2
-						;additional:  $04 fast, $08 preload en.
-	;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	;@preload8  ->  $80 preload enable, CR1 content
-	; SP after RETURN +9
-	;stack frame:
-	;[v16a|return|prel|pol|mode|comp|base|presc]
-tim1PwmCh1Setup
-		PUSH A
-	;allocate memory
-  SUBW SP, #$01	
-	;-variables
-	#define _006_v8a  $00 
-	#define _006_prel $05
-	#define _006_pol $06
-	#define _006_mode $07
-	#define _006_compH $08
-	#define _006_compL $09
-	#define _006_baseH $0A
-	#define _006_baseL $0B
-	#define _006_prescH $0C
-	#define _006_prescL $0D
-	;--disable timer
-		;--disable timer
-	BRES TIM1_CR1,#$00
-	;--load comparand, Hi firstly
-	LD A, (_006_compH,SP)
-	LD TIM1_CCR1H, A
-	LD A, (_006_compL,SP)
-	LD TIM1_CCR1L, A
-		;--prescaler high byte firstly
-	LD A, (_006_prescH,SP)
-	LD TIM1_PSCRH, A	
-	LD A, (_006_prescL,SP)
-	LD TIM1_PSCRL, A
-	;--load base, high byte first
-	LD A, (_006_baseH,SP)
-	LD TIM1_ARRH, A
-	LD A, (_006_baseL,SP)
-	LD TIM1_ARRL, A
-	;--load CCMR1
-	LD A, (_006_mode,SP)
-	LD TIM1_CCMR1, A
-	;--polarity
-	;--1) read and store 
-	; content of another channels
-	LD A, TIM1_CCER1
-	AND A, #$F0
-	LD (_006_v8a,SP), A; store
-	;--2)load data for loading in register
-	LD A, (_006_pol,SP)
-	OR A, #$01; turn on channel 1
-	;--3)apply others regs
-	OR A, (_006_v8a,SP)
-	LD TIM1_CCER1, A
-	;--turn on main channels
-	 BSET TIM1_BKR, #$07; MOE bit
-	;--CR1
-	LD A, (_006_prel,SP)
-	LD TIM1_CR1, A
-  BSET TIM1_CR1, #$00
-	;free memory
-	ADDW SP, #$01
-	POP A
-	RET 
-	
-	
-	;--TEST PASSED!
-  ;===PROCEDURE 'tim1PwmCh2Setup'
-  ;@presc16,  
-	;@base16, -> base of counter, ARRL
-	;@comp16, ->  pulse width, CCR1 content
-	;@mode8,  -> (CCMR) : $60 PWM_MODE1
-	                       ;$70 iPWM_MODE2
-	                       ;additional:  $04 fast, $08 preload en.
-	;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	;@preload8  ->  $80 preload enable, CR1 content
-	;SP after RETURN +9
-	;stack frame:
-	;[v16a|return|prel|pol|mode|comp|base|presc]
-tim1PwmCh2Setup
-		PUSH A
-		;--allocate memory
-		SUBW SP , #$01
-	;-variables
-	#define _007_v8a $00
-	#define _007_prel $05
-	#define _007_pol $06
-	#define _007_mode $07
-	#define _007_compH $08
-	#define _007_compL $09
-	#define _007_baseH $0A
-	#define _007_baseL $0B
-	#define _007_prescH $0C
-	#define _007_prescL $0D
-			;--disable timer
-	BRES TIM1_CR1,#$00
-	;--load comparand, Hi firstly
-	LD A, (_007_compH,SP)
-	LD TIM1_CCR2H, A
-	LD A, (_007_compL,SP)
-	LD TIM1_CCR2L, A
-		;--prescaler high byte firstly
-	LD A, (_007_prescH,SP)
-	LD TIM1_PSCRH, A	
-	LD A, (_007_prescL,SP)
-	LD TIM1_PSCRL, A
-	;--load base, high byte first
-	LD A, (_007_baseH,SP)
-	LD TIM1_ARRH, A
-	LD A, (_007_baseL,SP)
-	LD TIM1_ARRL, A
-	;--load CCMR2
-	LD A, (_007_mode,SP)
-	LD TIM1_CCMR2, A
-	;--polarity
-	; 1)store content of another channels
-	LD A, TIM1_CCER1
-	AND A, #$0F
-	LD (_007_v8a,SP), A; store
-	;--2)load data for loading in register
-	LD A, (_007_pol,SP)
-	OR A, #$01; turn on channel 
-	SWAP A;  A << 4
-	;--3) apply another regs
-	OR A, (_007_v8a,SP)
-	LD TIM1_CCER1, A
-	;--turn on main channels
-	BSET TIM1_BKR, #$07; MOE bit
-	;--CR1
-	LD A, (_007_prel,SP)
-	LD TIM1_CR1, A
-	BSET TIM1_CR1, #$00
-	;--fre memory
-	ADDW SP, #$01
-	POP A
-	RET
-	
-	;--TEST PASSED!	 
-	;===PROCEDURE 'tim1PwmCh3Setup'
-  ;@presc16,  
-	;@base16, -> base of counter, ARRL
-	;@comp16, ->  pulse width, CCR1 content
-	;@mode8,  -> (CCMR) : $60 PWM_MODE1
-		      ;$70 iPWM_MODE2
-		  ;additional:  $04 fast, $08 preload en.
-	;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	;@preload8  ->  $80 preload enable, CR1 content
-	
-	;stack frame:
-	;[v16a|return|prel|pol|mode|comp|base|presc]
-tim1PwmCh3Setup
-		PUSH A
-		;--allocate memory
-		SUBW SP , #$01
-	;-variables
-	#define _008_v8a $00
-	#define _008_prel $05
-	#define _008_pol $06
-	#define _008_mode $07
-	#define _008_compH $08
-	#define _008_compL $09
-	#define _008_baseH $0A
-	#define _008_baseL $0B
-	#define _008_prescH $0C
-	#define _008_prescL $0D
-			;--disable timer
-	BRES TIM1_CR1,#$00
-	;--load comparand, Hi firstly
-	LD A, (_008_compH,SP)
-	LD TIM1_CCR3H, A
-	LD A, (_008_compL,SP)
-	LD TIM1_CCR3L, A
-		;--prescaler high byte firstly
-	LD A, (_008_prescH,SP)
-	LD TIM1_PSCRH, A	
-	LD A, (_008_prescL,SP)
-	LD TIM1_PSCRL, A
-	;--load base, high byte first
-	LD A, (_008_baseH,SP)
-	LD TIM1_ARRH, A
-	LD A, (_008_baseL,SP)
-	LD TIM1_ARRL, A
-	;--load CCMR1
-	LD A, (_008_mode,SP)
-	LD TIM1_CCMR3, A
-	;--polarity
-	; 1)store content of another channels
-	LD A, TIM1_CCER2
-	AND A, #$F0
-	LD (_008_v8a,SP), A; store
-	;--2)load data for loading in register
-	LD A, (_008_pol,SP)
-	OR A, #$01; turn on channel 
-	;--3)apply another regs
-	OR A, (_008_v8a,SP)
-	LD TIM1_CCER2, A
-	;--turn on main channels
-	BSET TIM1_BKR, #$07; MOE bit
-	;--CR1
-	LD A, (_008_prel,SP)
-	LD TIM1_CR1, A
-	BSET TIM1_CR1, #$00
-	;--free memory
-	ADDW SP, #$01
-	POP A
-	RET
 
-	
-	
-	;--TEST PASSED!	
-		;===PROCEDURE 'tim1PwmCh4Setup'
-  ;@presc16,  
-	;@base16, -> base of counter, ARRL
-	;@comp16, ->  pulse width, CCR1 content
-	;@mode8,  -> (CCMR) : $60 PWM_MODE1
-							       ;$70 iPWM_MODE2
-						;additional:  $04 fast, $08 preload en.
-	;@polarity8 -> (CCER)  $00 active HI,$02 active low
-	;@preload8  ->  $80 preload enable, CR1 content
-	
-	;stack frame:
-	;[v16a|return|prel|pol|mode|comp|base|presc]
-tim1PwmCh4Setup
-		PUSH A
-		;--allocate memory
-		SUBW SP , #$01
-	;-variables
-	#define _009_v8a $00
-	#define _009_prel $05
-	#define _009_pol $06
-	#define _009_mode $07
-	#define _009_compH $08
-	#define _009_compL $09
-	#define _009_baseH $0A
-	#define _009_baseL $0B
-	#define _009_prescH $0C
-	#define _009_prescL $0D
-			;--disable timer
-	BRES TIM1_CR1,#$00
-	;--load comparand, Hi firstly
-	LD A, (_009_compH,SP)
-	LD TIM1_CCR4H, A
-	LD A, (_009_compL,SP)
-	LD TIM1_CCR4L, A
-		;--prescaler high byte firstly
-	LD A, (_009_prescH,SP)
-	LD TIM1_PSCRH, A	
-	LD A, (_009_prescL,SP)
-	LD TIM1_PSCRL, A
-	;--load base, high byte first
-	LD A, (_009_baseH,SP)
-	LD TIM1_ARRH, A
-	LD A, (_009_baseL,SP)
-	LD TIM1_ARRL, A
-	;--load CCMR
-	LD A, (_009_mode,SP)
-	LD TIM1_CCMR4, A
-	;--polarity
-; 1)store content of another channels
-	LD A, TIM1_CCER2
-	AND A, #$0F
-	LD (_009_v8a,SP), A; store
-	;--2)load data for loading in register
-	LD A, (_009_pol,SP)
-	OR A, #$01; turn on channel 
-	SWAP A;  A << 4
-	;--3) apply another regs
-	OR A,  (_009_v8a,SP)
-	LD TIM1_CCER2, A
-	;--turn on main channels
-	 BSET TIM1_BKR, #$07; MOE bit
-	;--CR1
-	LD A, (_009_prel,SP)
-	LD TIM1_CR1, A
-	BSET TIM1_CR1, #$00
-	;--free mem
+;==PROCEDURE==uart1ReceiverSetup
+;@baudRate16, divider
+;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+          ;(set  manually below)
+;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+;-----------
+;SP +5
+;  0  1 2 4    5         6      7      8 
+;[v8a|A|RET|stopBits|dataLength|baudRate]
+
+uart1ReceiverSetup
+  ;--store A
+	PUSH A
+	;--allocate 1 byte
+	SUBW SP, #$01
+	#define _U1000_v8a $00 
+	#define _U1000_parity $05
+	#define _U1000_stopBits $06 
+	#define _U1000_dataLength $07
+	#define _U1000_baudRateH $08
+	#define _U1000_baudRateL $09
+	;--disable Rx, Tx
+	BRES UART1_CR2, #$2; REN flag
+	BRES UART1_CR2, #$3; TEN flag
+  ;--when the length 9 bits-jump below
+	LD A, #$10
+	AND A, (_U1000_dataLength,SP)
+	JRNE L_U1000_nsb ;when 9 bits-go to label
+	;--when 8 bit set stop bits
+	LD A, (_U1000_stopBits,SP)
+	LD UART1_CR3, A
+L_U1000_nsb
+  ;--write data length and parity
+	LD A,(_U1000_dataLength,SP)
+	OR A, (_U1000_parity,SP)
+	LD UART1_CR1, A
+	;prepare UART1_BRR2
+	;n4 n1
+	LD A, (_U1000_baudRateL,SP)
+	AND A, #$0F;
+	LD ( _U1000_v8a,SP),A; store nibble 1
+	LD A, (_U1000_baudRateH,SP)
+	AND A, #$f0 ; nibble 4
+	OR A, (_U1000_v8a,SP) ; n4+n1
+	LD ( _U1000_v8a,SP),A; store BRR2 [n4,n1]
+	;;--send -TO REGISTER BRR2
+	LD UART1_BRR2 , A
+	;----n3 n2
+	LD A, (_U1000_baudRateH,SP)
+	SWAP A
+	AND A, #$F0
+	LD ( _U1000_v8a,SP),A; store n3
+	LD A, (_U1000_baudRateL,SP)
+	SWAP A
+	AND A, #$0f
+	OR A, ( _U1000_v8a,SP)
+	;--send to register BRR1
+	LD UART1_BRR1, A
+	; RIEN interrupt on receive
+	BSET UART1_CR2, #$5 
+	;--setting REN bit "Receiver enable"
+	BSET UART1_CR2 , #$2
+	;--restore stack
 	ADDW SP, #$01
 	POP A
 	RET
-	
-startAdcSingleScan MACRO max_adc_ch
-	LD A, ADC_CSR
-	AND A, #$7F; clear EOC
-	OR A, max_adc_ch
-	LD ADC_CSR, A
-	BSET ADC_CR1, #$00
-	MEND
-	
-	;---STM8 ADC initialization library
-;Author : Andrii Androsovych
-	;====P R O C E D U R E===adcSingleModeSetup
-	;@channel8, $00->AIN0, $01->AIN1, #$0F->AIN15
-	;@prescaler, $00->/2, $10->/3, $20->/4, $30->/6, $40->/8, $50->/10
-	;ADC DATA is right aligned!
-	;SP+2
-	;----------
-	;stack frame
-	;[A|RET|prescaler|channel]
-adcSingleModeSetup
-	#define _001_ch $05
-	#define _001_presc $04
-	;--store 
-	PUSH A
-	;--disable ADC
-	BRES ADC_CR1, #$00
-	;--load channel
-	LD A, (_001_ch,SP)
-	AND A, #$0F
-	LD ADC_CSR, A
-	;-result alignment- right
-	BSET ADC_CR2, #$03; ALIGN bit
-	;--prescaler
-	LD A, (_001_presc,SP)
-	AND A, #$F0
-	OR A, #$01; ADON
-	LD ADC_CR1, A
-	;--restore
-	POP A
-	RET
+	;==PROCEDURE==uart1TransmitterSetup
  
-	;====P R O C E D U R E===adcSingleScanModeSetup,
-	;@channel8, $00->AIN0, $01->AIN1, #$0F->AIN15
-	;@prescaler, $00->/2, $10->/3, $20->/4, $30->/6, $40->/8, $50->/10
-	;ADC DATA is right aligned!
-	;SP+2
-	;----------
-	;stack frame
-	;[A|RET|prescaler|channel]
-	;--NOTE: result stores in ADC_DBxRH, ADC_DBxRL
-adcSingleScanModeSetup
-	#define _001_ch $05
-	#define _001_presc $04
-	;--store 
+;@baudRate16, divider
+;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+          ;(set  manually below)
+;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+;-----------
+;SP +5
+;  0  1 2 4    5         6      7      8 
+;[v8a|A|RET|stopBits|dataLength|baudRate]
+
+uart1TransmitterSetup
+  ;--store A
 	PUSH A
-	;--disable ADC
-	BRES ADC_CR1, #$00
-	;--load channel
-	LD A, (_001_ch,SP)
-	AND A, #$0F
-	LD ADC_CSR, A
-	;- right alignment  scan
-	BSET ADC_CR2, #$03; ALIGN bit
-	BSET ADC_CR2, #$01; SCAN bit
-	;--prescaler
-	LD A, (_001_presc,SP)
+	;--allocate 1 byte
+	SUBW SP, #$01
+	#define _U1001_v8a $00 
+	#define _U1001_parity $05
+	#define _U1001_stopBits $06 
+	#define _U1001_dataLength $07
+	#define _U1001_baudRateH $08
+	#define _U1001_baudRateL $09
+	;--disable Rx, Tx
+	BRES UART1_CR2, #$2; REN flag
+	BRES UART1_CR2, #$3; TEN flag
+  ;--when the length 9 bits-jump below
+	LD A, #$10
+	AND A, (_U1001_dataLength,SP)
+	JRNE L_U1001_nsb ;when 9 bits-go to label
+	;--when 8 bit set stop bits
+	LD A, (_U1001_stopBits,SP)
+	LD UART1_CR3, A
+L_U1001_nsb
+  ;--write data length and parity
+	LD A,(_U1001_dataLength,SP)
+	OR A, (_U1001_parity,SP)
+	LD UART1_CR1, A
+	;prepare UART1_BRR2
+	;n4 n1
+	LD A, (_U1001_baudRateL,SP)
+	AND A, #$0F;
+	LD ( _U1001_v8a,SP),A; store nibble 1
+	LD A, (_U1001_baudRateH,SP)
+	AND A, #$f0 ; nibble 4
+	OR A, (_U1001_v8a,SP) ; n4+n1
+	LD ( _U1001_v8a,SP),A; store BRR2 [n4,n1]
+	;;--send -TO REGISTER BRR2
+	LD UART1_BRR2 , A
+	;----n3 n2
+	LD A, (_U1001_baudRateH,SP)
+	SWAP A
 	AND A, #$F0
-	OR A, #$01; ADON
-	LD ADC_CR1, A
-	BSET ADC_CR1, #$00; start
-	;--restore
+	LD ( _U1001_v8a,SP),A; store n3
+	LD A, (_U1001_baudRateL,SP)
+	SWAP A
+	AND A, #$0f
+	OR A, ( _U1001_v8a,SP)
+	;--send to register BRR1
+	LD UART1_BRR1, A
+	; TCIEN interrupt on tx complete
+	BSET UART1_CR2, #$6 
+	;--setting TEN bit "Transmitter enable"
+	BSET UART1_CR2 , #$3
+	;--restore stack
+	ADDW SP, #$01
 	POP A
 	RET
-	
+;==PROCEDURE==uart1DuplexSetupIT
+;--set up Receiver and Transmitter
+; Turn on  TC, RXNE interrupts.
+;---------------------
+;@baudRate16, divider
+;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+          ;(set  manually below)
+;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+;-----------
+;SP +5
+;  0  1 2 4    5         6      7      8 
+;[v8a|A|RET|stopBits|dataLength|baudRate]
+
+uart1DuplexSetupIT
+  ;--store A
+	PUSH A
+	;--allocate 1 byte
+	SUBW SP, #$01
+	#define _U1003_v8a $00 
+	#define _U1003_parity $05
+	#define _U1003_stopBits $06 
+	#define _U1003_dataLength $07
+	#define _U1003_baudRateH $08
+	#define _U1003_baudRateL $09
+	;--disable Rx, Tx
+	BRES UART1_CR2, #$2; REN flag
+	BRES UART1_CR2, #$3; TEN flag
+  ;--when the length 9 bits-jump below
+	LD A, #$10
+	AND A, (_U1003_dataLength,SP)
+	JRNE L_U1003_nsb ;when 9 bits-go to label
+	;--when 8 bit set stop bits
+	LD A, (_U1003_stopBits,SP)
+	LD UART1_CR3, A
+L_U1003_nsb
+  ;--write data length and parity
+	LD A,(_U1003_dataLength,SP)
+	OR A, (_U1003_parity,SP)
+	LD UART1_CR1, A
+	;prepare UART1_BRR2
+	;n4 n1
+	LD A, (_U1003_baudRateL,SP)
+	AND A, #$0F;
+	LD ( _U1003_v8a,SP),A; store nibble 1
+	LD A, (_U1003_baudRateH,SP)
+	AND A, #$f0 ; nibble 4
+	OR A, (_U1003_v8a,SP) ; n4+n1
+	LD ( _U1003_v8a,SP),A; store BRR2 [n4,n1]
+	;;--send -TO REGISTER BRR2
+	LD UART1_BRR2 , A
+	;----n3 n2
+	LD A, (_U1003_baudRateH,SP)
+	SWAP A
+	AND A, #$F0
+	LD ( _U1003_v8a,SP),A; store n3
+	LD A, (_U1003_baudRateL,SP)
+	SWAP A
+	AND A, #$0f
+	OR A, ( _U1003_v8a,SP)
+	;--send to register BRR1
+	LD UART1_BRR1, A
+	;turn on interrupt on tx complete, Rx not empty
+	BSET UART1_CR2, #$6; TCIEN
+	BSET UART1_CR2, #$5; RIEN
+	;--set  "Transmitter enable", "receiver enable"
+	BSET UART1_CR2 , #$3
+	BSET UART1_CR2 , #$2
+	;--restore stack
+	ADDW SP, #$01
+	POP A
+	RET
 	;====P R O C E D U R E===turn on clk bus
 	;@peripherial8
 	;TIM1-$80,TIM3-$40,TIM2/5-$20,TIM4/6-$10,UART-see datasheet,
@@ -573,9 +429,6 @@ clkSwitchToCrystal_hsi_rdy
 	;0xB4: HSE selected as master clock source
 	LD A, #$B4
 	LD CLK_SWR, A
-	NOP
-	NOP
-	NOP
 	NOP
 	POP A
 	RET
@@ -624,42 +477,55 @@ clkSetCpuDivider
 ;------I  S  R----------
 
 tim4Isr
-  ;--clear flag
-	BRES TIM4_SR, #$00
-	BCPL PC_ODR, #$06
 	IRET	
 	
  
 	
 onTim1Update
-	  ;--clear flag
-	LD A, #$00
-	LD TIM1_SR1, A
-	;--load ADC To PWM register
-	;;AIN 3, 4,5,6
-	 LD A, ADC_DB3RH
-   LD TIM1_CCR1H, A
-	 LD A, ADC_DB3RL
-   LD TIM1_CCR1L, A
-	 ;--4
-	 LD A, ADC_DB4RH
-   LD TIM1_CCR2H, A
-	 LD A, ADC_DB4RL
-   LD TIM1_CCR2L, A
-	;--5
-	 LD A, ADC_DB5RH
-   LD TIM1_CCR3H, A
-	 LD A, ADC_DB5RL
-   LD TIM1_CCR3L, A
-	 ;--6
-	 LD A, ADC_DB6RH
-   LD TIM1_CCR4H, A
-	 LD A, ADC_DB6RL
-   LD TIM1_CCR4L, A
-		;--start ADC
-  startAdcSingleScan #$06
-	
 	IRET
+
+uart1OnReceive
+  BSET PC_ODR, #$3
+  LD A, UART1_DR 
+	BSET _semaphore, #$0 ;;set semaphore
+	LD _received_char, A ;store symbol for echo
+	;--test on errors
+	LD A, UART1_SR
+	AND A, #$0F
+	BRES PC_ODR, #$5 ;turn OFF error LED
+	JREQ _NO_ERR_RX  ; ? are there no errors?
+	BSET PC_ODR, #$5 ;turn ON error LED
+_NO_ERR_RX
+	;when data has been transmitted
+	BTJF UART1_SR, #$6, NO_DATA_IN_TC
+WAIT_UNTIL_TC
+		;wait until transmission complete
+		BTJF UART1_SR, #$6, WAIT_UNTIL_TC
+NO_DATA_IN_TC
+  NOP
+
+	BRES PC_ODR, #$3
+	NOP
+  IRET
+	
+	
+uart1OnTransmit
+   BSET PC_ODR, #$4
+	 BRES PC_ODR, #$7
+   LD A, UART1_SR
+	 BRES UART1_SR, #$6
+	 BRES UART1_SR, #$7
+	 ;--test on errors
+	 AND A, #$0F
+	 BRES PC_ODR, #$5 ;turn OFF error LED
+	 JREQ _NO_ERR_TX  ; ? are there no errors?
+	 BSET PC_ODR, #$5 ;turn ON error LED
+_NO_ERR_TX
+	 NOP
+	 NOP
+	 BRES PC_ODR, #$4
+  IRET
+
 
 	interrupt NonHandledInterrupt
 NonHandledInterrupt.l
@@ -684,8 +550,8 @@ NonHandledInterrupt.l
 	dc.l {$82000000+NonHandledInterrupt}	; irq14
 	dc.l {$82000000+NonHandledInterrupt}	; irq15
 	dc.l {$82000000+NonHandledInterrupt}	; irq16
-	dc.l {$82000000+NonHandledInterrupt}	; irq17
-	dc.l {$82000000+NonHandledInterrupt}	; irq18
+	dc.l {$82000000+uart1OnTransmit}	; irq17
+	dc.l {$82000000+uart1OnReceive}	; irq18
 	dc.l {$82000000+NonHandledInterrupt}	; irq19
 	dc.l {$82000000+NonHandledInterrupt}	; irq20
 	dc.l {$82000000+NonHandledInterrupt}	; irq21

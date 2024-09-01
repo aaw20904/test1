@@ -1,4 +1,4 @@
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 1  Assembler
                                                d:\stm8\dbg1\main.asm
 
@@ -60,7 +60,7 @@ Page 1  Assembler
   32  000000                                 #define  CPUDIV_8 #$03
   33  000000                                 #define  CPUDIV_16 #$04
   34  000000                                 #define  CPUDIV_32 #$05
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 2  Assembler
                                                d:\stm8\dbg1\main.asm
 
@@ -121,7 +121,7 @@ Page 2  Assembler
   89  000000                                 #define  TIM1_CR2  $5251  ;
   90  000000                                 #define  TIM1_SMCR $5252  ;
   91  000000                                 #define  TIM1_ETR  $5253  ;
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 3  Assembler
                                                d:\stm8\dbg1\main.asm
 
@@ -182,7 +182,7 @@ Page 3  Assembler
  146  000000                                 #define  I2C_OARH      $5214;
  147  000000                                 #define  I2C_DR        $5216;
  148  000000                                 #define  I2C_SR1       $5217;
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 4  Assembler
                                                d:\stm8\dbg1\main.asm
 
@@ -243,7 +243,7 @@ Page 4  Assembler
  203  000000                                 #define  ADC_DB4RH     $53E8;
  204  000000                                 #define  ADC_DB4RL     $53E9;
  205  000000                                 #define  ADC_DB5RH     $53EA;
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 5  Assembler
                                                d:\stm8\dbg1\main.asm
 
@@ -268,7 +268,7 @@ Page 5  Assembler
  224  000000                                 #define  TIM2_CCER1    $530A;
  225  000000                                 #define  TIM2_CCER2    $530B;
  226  000000                                 #define  TIM2_CNTRH    $530C;
- 227  000000                                 #define  TIM2_CNTRL      $530D  ;
+ 227  000000                                 #define  TIM2_CNTRL  $530D  ;
  228  000000                                 #define  TIM2_PSCR     $530E;
  229  000000                                 #define  TIM2_ARRH     $530F;
  230  000000                                 #define  TIM2_ARRL     $5310;
@@ -281,900 +281,710 @@ Page 5  Assembler
  237                                   
  238                                   
 <END_OF_INCLUSION>
-   5                         
-   6                                   segment  'rom'     
-   7                         main.l    
-   8                                                          ; initialize SP
-   9  008080   AE03FF                        ldw      X,#stack_end
-  10  008083   94                            ldw      SP,X
-  11                         
-  12  008084                                 #ifdef   1             
-  13                                                          ; clear RAM0
-  14  000000                       ram0_start.b  EQU      $0
-  15  0000FF                       ram0_end.b  EQU      $FF
-  16  008084   AE0000                        ldw      X,#ram0_start
-  17                         clear_ram0.l  
-  18  008087   7F                            clr      (X)
-  19  008088   5C                            incw     X
-  20  008089   A300FF                        cpw      X,#ram0_end   
-  21  00808C   23F9                          jrule    clear_ram0
-  22  00808E                                 #endif   
-  23                         
-  24  00808E                                 #ifdef   1
-  25                                                          ; clear RAM1
-  26  000100                       ram1_start.w  EQU      $100
-  27  0001FF                       ram1_end.w  EQU      $1FF          
-  28  00808E   AE0100                        ldw      X,#ram1_start
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+   5                                   
+   6                                   segment  at 0000 'USER_RAM'
+   7                                                          ;--USER VARIABLES--
+   8                                                          ;pointer for receiver	$0000
+   9  000000                       _RxPtr_   equ      $0000
+  10                                                          ;pointer for transmitter $0002
+  11  000002                       _TxPtr_   equ      $0002
+  12                                                          ; bit0-sybol has been received
+  13                                                          ; bit1 - it is a sybol for 
+                                                                ;transmission
+  14  000004                       _semaphore  equ      $0004
+  15                                                          ;bufers for transmission and 
+                                                                ;reception
+  16  000010                       _RxBuffer32  equ      $0010
+  17  000000                                 #define  _RxBuffer32_end $002f   ;last element
+  18  000030                       _TxBuffer32  equ      $0030
+  19  000000                                 #define  _TxBuffer32_end $004f   ; last element
+  20  000050                       _received_char  equ      $0050
+  21                                                          ;stringbuffer $0004
+  22  000051                       str1      equ      $0051         
+  23                                                          ;-----------------
+  24                                   segment  'rom'     
+  25  008080   5F505554494E2048    
+  25  008088   554A4C4F0A0D        _hello    STRING   "_PUTIN HUJLO",'\n','\r'
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 6  Assembler
                                                d:\stm8\dbg1\main.asm
 
-  29                         clear_ram1.l  
-  30  008091   7F                            clr      (X)
-  31  008092   5C                            incw     X
-  32  008093   A301FF                        cpw      X,#ram1_end   
-  33  008096   23F9                          jrule    clear_ram1
-  34  008098                                 #endif   
-  35                         
-  36                                                          ; clear stack
-  37  000200                       stack_start.w  EQU      $200
-  38  0003FF                       stack_end.w  EQU      $3FF
-  39  008098   AE0200                        ldw      X,#stack_start
-  40                         clear_stack.l  
-  41  00809B   7F                            clr      (X)
-  42  00809C   5C                            incw     X
-  43  00809D   A303FF                        cpw      X,#stack_end  
-  44  0080A0   23F9                          jrule    clear_stack
-  45                         ;______________________________________
-  46                         ;  _   _ ___  ___ _ __   _ __ ___   __ _(_)_ __  
-  47                         ; | | | / __|/ _ \ '__| | '_ ` _ \ / _` | | '_ \ 
-  48                         ; | |_| \__ \  __/ |    | | | | | | (_| | | | | |
-  49                         ;  \__,_|___/\___|_|    |_| |_| |_|\__,_|_|_| |_|
-  50  0080A2   A600                          LD       A, #$00
-  51  0080A4   88                            PUSH     A
-  52  0080A5   CD82EC                        CALL     clkSetHsiDivider
-  53  0080A8   84                            POP      A
-  54  0080A9   A6FF                          LD       A, #$FF
-  55  0080AB   C750C7                        LD       $50C7, A
-  56  0080AE   A68A                          LD       A, #$8A
-  57  0080B0   C750CA                        LD       $50CA, A
-  58                                                          ;--turn on quartz
-  59  0080B3   CD82CE                        CALL     clkSwitchToCrystal
-  60                                   
-  61                                                          ;--PC6-output 
-  62  0080B6   A6D8                          LD       A, #$D8       ; 3,4,6,7  
-  63  0080B8   C7500C                        LD       $500C, A
-  64  0080BB   C7500D                        LD       $500D, A
-  65  0080BE   C7500E                        LD       $500E, A
-  66                                                          ;--PA3
-  67  0080C1   A600                          LD       A, #$00       ;  
-  68  0080C3   C75002                        LD       $5002, A
-  69  0080C6   C75003                        LD       $5003, A
-  70  0080C9   C75004                        LD       $5004, A
-  71                                                          ;--D
-  72  0080CC   A600                          LD       A, #$00       ;  
-  73  0080CE   C75011                        LD       $5011, A
-  74  0080D1   C75012                        LD       $5012, A
-  75  0080D4   C75013                        LD       $5013, A
-  76                                   
-  77                         
-  78                                   
-  79                                                          ;@presc16,  
-  80                                                          ;@base16, -> base of counter, 
-                                                                ;ARRL
-  81                                                          ;@comp16, -> pulse width, CCR1 
-                                                                ;content
-  82                                                          ;@mode8,  -> (CCMR) : $60 
-                                                                ;PWM_MODE1
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+  26                         
+  27                         main.l    
+  28                                                          ; initialize SP
+  29  00808E   AE03FF                        ldw      X,#stack_end
+  30  008091   94                            ldw      SP,X
+  31                         
+  32  008092                                 #ifdef   1             
+  33                                                          ; clear RAM0
+  34  000000                       ram0_start.b  EQU      $0
+  35  0000FF                       ram0_end.b  EQU      $FF
+  36  008092   AE0000                        ldw      X,#ram0_start
+  37                         clear_ram0.l  
+  38  008095   7F                            clr      (X)
+  39  008096   5C                            incw     X
+  40  008097   A300FF                        cpw      X,#ram0_end   
+  41  00809A   23F9                          jrule    clear_ram0
+  42  00809C                                 #endif   
+  43                         
+  44  00809C                                 #ifdef   1
+  45                                                          ; clear RAM1
+  46  000100                       ram1_start.w  EQU      $100
+  47  0001FF                       ram1_end.w  EQU      $1FF          
+  48  00809C   AE0100                        ldw      X,#ram1_start
+  49                         clear_ram1.l  
+  50  00809F   7F                            clr      (X)
+  51  0080A0   5C                            incw     X
+  52  0080A1   A301FF                        cpw      X,#ram1_end   
+  53  0080A4   23F9                          jrule    clear_ram1
+  54  0080A6                                 #endif   
+  55                         
+  56                                                          ; clear stack
+  57  000200                       stack_start.w  EQU      $200
+  58  0003FF                       stack_end.w  EQU      $3FF
+  59  0080A6   AE0200                        ldw      X,#stack_start
+  60                         clear_stack.l  
+  61  0080A9   7F                            clr      (X)
+  62  0080AA   5C                            incw     X
+  63  0080AB   A303FF                        cpw      X,#stack_end  
+  64  0080AE   23F9                          jrule    clear_stack
+  65                         ;______________________________________
+  66                         ;  _   _ ___  ___ _ __   _ __ ___   __ _(_)_ __  
+  67                         ; | | | / __|/ _ \ '__| | '_ ` _ \ / _` | | '_ \ 
+  68                         ; | |_| \__ \  __/ |    | | | | | | (_| | | | | |
+  69                         ;  \__,_|___/\___|_|    |_| |_| |_|\__,_|_|_| |_|
+  70                         
+  71  0080B0   AE0030                        LDW      X, #_TxBuffer32  ;
+  72                         ;--global pointer UART Rx bufffer init
+  73                         ;[*P=$0000][$0002...$0012]
+  74  0080B3   B651                          LD       A, str1       ;
+  75  0080B5   AE0002                        LDW      X, #$0002
+  76  0080B8   BF00                          LDW      $0000, X
+  77  0080BA   A600                          LD       A, #$00
+  78  0080BC   88                            PUSH     A
+  79  0080BD   CD8250                        CALL     clkSetHsiDivider
+  80  0080C0   84                            POP      A
+  81  0080C1   A6FF                          LD       A, #$FF
+  82  0080C3   C750C7                        LD       $50C7, A
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 7  Assembler
                                                d:\stm8\dbg1\main.asm
 
-  83                                                          ;$70 iPWM_MODE2
-  84                                                          ;additional:  $04 fast, $08 
-                                                                ;preload en.
-  85                                                          ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
-  86                                                          ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
+  83  0080C6   A68A                          LD       A, #$8A
+  84  0080C8   C750CA                        LD       $50CA, A
+  85                                                          ;--turn on quartz
+  86  0080CB   CD8235                        CALL     clkSwitchToCrystal
   87                                   
-  88                                   
-  89  0080D7   AE000F                        LDW      X, #$000F     ;@presc16,  
-  90  0080DA   89                            PUSHW    X
-  91  0080DB   AE03FF                        LDW      X, #$03FF     ;@base16, -> base of counter, 
-                                                                ;ARRL
-  92  0080DE   89                            PUSHW    X
-  93  0080DF   AE000F                        LDW      X, #$000f     ;@comp16, -> capture compare 
-                                                                ;CCR1 content
-  94  0080E2   89                            PUSHW    X
-  95  0080E3   A660                          LD       A, #$60       ;@mode8,  -> (CCMR)PIN  
-                                                                ;beheviavour: $10 active on 
-                                                                ;match
-  96  0080E5   88                            PUSH     A
-  97  0080E6   A600                          LD       A, #$00       ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
-  98  0080E8   88                            PUSH     A
-  99  0080E9   A600                          LD       A ,#$00       ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 100  0080EB   88                            PUSH     A             
- 101  0080EC   CD819D                        call     tim1PwmCh2Setup
- 102  0080EF   5B09                          ADDW     SP, #$09
- 103  0080F1   AE000F                        LDW      X, #$000F     ;@presc16,  
- 104  0080F4   89                            PUSHW    X
- 105  0080F5   AE03FF                        LDW      X, #$03FF     ;@base16, -> base of counter, 
-                                                                ;ARRL
- 106  0080F8   89                            PUSHW    X
- 107  0080F9   AE000F                        LDW      X, #$000f     ;@comp16, -> capture compare 
-                                                                ;CCR1 content
- 108  0080FC   89                            PUSHW    X
- 109  0080FD   A660                          LD       A, #$60       ;@mode8,  -> (CCMR)PIN  
-                                                                ;beheviavour: $10 active on 
-                                                                ;match
- 110  0080FF   88                            PUSH     A
- 111  008100   A600                          LD       A, #$00       ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 112  008102   88                            PUSH     A
- 113  008103   A600                          LD       A ,#$00       ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 114  008105   88                            PUSH     A             
- 115  008106   CD81E9                        call     tim1PwmCh3Setup
- 116  008109   5B09                          ADDW     SP, #$09
- 117  00810B   AE000F                        LDW      X, #$000F     ;@presc16,  
- 118  00810E   89                            PUSHW    X
- 119  00810F   AE03FF                        LDW      X, #$03FF     ;@base16, -> base of counter, 
-                                                                ;ARRL
- 120  008112   89                            PUSHW    X
- 121  008113   AE000F                        LDW      X, #$000f     ;@comp16, -> capture compare 
-                                                                ;CCR1 content
- 122  008116   89                            PUSHW    X
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+  88                                                          ;--PC3,4-output 
+  89  0080CE   A638                          LD       A, #$38       ; 3,4,5 
+  90  0080D0   C7500C                        LD       $500C, A
+  91  0080D3   C7500D                        LD       $500D, A
+  92  0080D6   C7500E                        LD       $500E, A
+  93                                                          ;--PA3
+  94  0080D9   A600                          LD       A, #$00       ;  
+  95  0080DB   C75002                        LD       $5002, A
+  96  0080DE   C75003                        LD       $5003, A
+  97  0080E1   C75004                        LD       $5004, A
+  98                                                          ;--D
+  99  0080E4   A620                          LD       A, #$20       ;  
+ 100  0080E6   C75011                        LD       $5011, A      ;   PD5 output,
+ 101  0080E9   721A500F                      BSET     $500F, #$05   ; high level PD5 
+ 102  0080ED   C75012                        LD       $5012, A      ; push-pull,
+ 103  0080F0   C75012                        LD       $5012, A      ; up to 10MHz.
+ 104                                                          ;dumy delay
+ 105  0080F3   9D                            NOP      
+ 106  0080F4   9D                            NOP      
+ 107  0080F5   9D                            NOP      
+ 108                                   
+ 109                                   
+ 110                                                          ;@baudRate16, divider
+ 111  0080F6   AE0209                        LDW      X, #$0209
+ 112  0080F9   89                            PUSHW    X
+ 113                         ;@dataLength8, ;
+ 114                                                          ;$10->9bits (1stop 1 start) 
+ 115                                                          ;, $00->8bits (set  ;manually 
+                                                                ;below)
+ 116  0080FA   A600                          LD       A, #$00
+ 117  0080FC   88                            PUSH     A
+ 118                         ;@stopBits8  $00->1bit, $20->2bits
+ 119  0080FD   A600                          LD       A, #$00
+ 120  0080FF   88                            PUSH     A
+ 121  008100   A600                          LD       A, #$00       ;@parity8, $00-disable, 
+ 122                                                          ;$04-enable: ($02-odd OR 
+                                                                ;$00-even)
+ 123  008102   88                            PUSH     A
+ 124  008103   CD81D2                        CALL     uart1DuplexSetupIT
+ 125                         ;-----------
+ 126                         ;SP +5
+ 127  008106   5B05                          ADDW     SP, #$05
+ 128  008108   A631                          LD       A,#$31
+ 129  00810A   9D                            nop      
+ 130  00810B   9D                            nop      
+ 131  00810C   9D                            nop      
+ 132  00810D   9D                            nop      
+ 133                         
+ 134                                   
+ 135                                   
+ 136                                                          ;--L     o o    Pppp
+ 137                                                          ;  L    o   o   P   p
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 8  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 123  008117   A660                          LD       A, #$60       ;@mode8,  -> (CCMR)PIN  
-                                                                ;beheviavour: $10 active on 
-                                                                ;match
- 124  008119   88                            PUSH     A
- 125  00811A   A600                          LD       A, #$00       ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 126  00811C   88                            PUSH     A
- 127  00811D   A600                          LD       A ,#$00       ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 128  00811F   88                            PUSH     A             
- 129  008120   CD8234                        call     tim1PwmCh4Setup
- 130  008123   5B09                          ADDW     SP, #$09
- 131  008125   AE000F                        LDW      X, #$000F     ;@presc16,  
- 132  008128   89                            PUSHW    X
- 133  008129   AE03FF                        LDW      X, #$03FF     ;@base16, -> base of counter, 
-                                                                ;ARRL
- 134  00812C   89                            PUSHW    X
- 135  00812D   AE000F                        LDW      X, #$000f     ;@comp16, -> capture compare 
-                                                                ;CCR1 content
- 136  008130   89                            PUSHW    X
- 137  008131   A660                          LD       A, #$60       ;@mode8,  -> (CCMR)PIN  
-                                                                ;beheviavour: $10 active on 
-                                                                ;match
- 138  008133   88                            PUSH     A
- 139  008134   A600                          LD       A, #$00       ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 140  008136   88                            PUSH     A
- 141  008137   A600                          LD       A ,#$00       ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 142  008139   88                            PUSH     A             
- 143  00813A   CD8152                        call     tim1PwmCh1Setup
- 144  00813D   5B09                          ADDW     SP, #$09
- 145                                   
- 146                                                          ;----ADC
- 147  00813F   A606                          LD       A, #$06       ;@channel8, $00->AIN0, 
-                                                                ;$01->AIN1, #$0F->AIN15
- 148  008141   88                            PUSH     A
- 149  008142   A600                          LD       A, #$00       ;@prescaler, $00->/2, $10->/3, 
-                                                                ;$20->/4, $
- 150  008144   88                            PUSH     A
- 151  008145   CD829B                        CALL     adcSingleScanModeSetup
- 152  008148   5B02                          ADDW     SP, #$02
- 153                                                          ;---interrupt enable
- 154  00814A   A601                          LD       A, #$01       ; UIE
- 155  00814C   C75254                        LD       $5254, A
- 156                         
- 157                         
- 158                         infinite_loop.l  
- 159                                   
- 160  00814F   8F                            wfi      
- 161  008150   20FD                          jra      infinite_loop
- 162                                   
- 163                         
- 164                                   
- 165                         
- 166                         ;------------------------------	
- 167                         ;  _            _   
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 138                                                          ;  L    o   o   Ppp 
+ 139                                                          ;  L L   o o    P
+ 140                                                          ;;init pointers
+ 141  00810E   AE0010                        LDW      X, #_RxBuffer32
+ 142  008111   BF00                          LDW      _RxPtr_, X
+ 143  008113   AE0030                        LDW      X, #_TxBuffer32
+ 144  008116   BF02                          LDW      _TxPtr_, X
+ 145                         infinite_loop.l  
+ 146                                                          ;are there  symbol?
+ 147  008118   720100041C                    BTJF     _semaphore, #$0, _no_sym_reeived
+ 148                                                          ;when symbol received:
+ 149  00811D   72110004                      BRES     _semaphore, #$0   ;clear semaphore
+ 150  008121   BE00                          LDW      X, _RxPtr_    ; load a pointer
+ 151  008123   B650                          LD       A, _received_char   ;read symbol from Rx
+ 152  008125   F7                            LD       (X), A        ; store symbol in an arrray
+ 153                                                          ;when the symbol last - assign 
+                                                                ;to pointer first cell
+ 154  008126   9093                          LDW      Y, X
+ 155  008128   72A2002F                      SUBW     Y, #$002f 
+ 156  00812C   2706                          JREQ     _last_rx_item
+ 157                                                          ;when character (byte) not last 
+                                                                ;- increment & store pointer
+ 158  00812E   5C                            INCW     X
+ 159  00812F   BF00                          LDW      _RxPtr_, X
+ 160  008131   CC8139                        JP       _no_sym_reeived    
+ 161                         _last_rx_item  
+ 162                                                          ;when the symbol is  last - 
+                                                                ;clear pointer
+ 163  008134   AE0010                        LDW      X, #_RxBuffer32
+ 164  008137   BF00                          LDW      _RxPtr_, X
+ 165                                                          ;LD UART1_DR, A
+ 166                         _no_sym_reeived  
+ 167                         
+ 168  008139   8F                            WFI      
+ 169  00813A   20DC                          jra      infinite_loop
+ 170                                   
+ 171                         
+ 172                                   
+ 173                         
+ 174                         ;------------------------------	
+ 175                         ;  _            _   
+ 176                         ; | |_ ___  ___| |_ 
+ 177                         ; | __/ _ \/ __| __|
+ 178                         ; | ||  __/\__ \ |_ 
+ 179                         ;  \__\___||___/\__|
+ 180                         ;-------------------------------
+ 181                         
+ 182                         ;==PROCEDURE==uart1ReceiverSetup
+ 183                         ;@baudRate16, divider
+ 184                         ;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+ 185                                                          ;(set  manually below)
+ 186                         ;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+ 187                         ;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+ 188                         ;-----------
+ 189                         ;SP +5
+ 190                         ;  0  1 2 4    5         6      7      8 
+ 191                         ;[v8a|A|RET|stopBits|dataLength|baudRate]
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 9  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 168                         ; | |_ ___  ___| |_ 
- 169                         ; | __/ _ \/ __| __|
- 170                         ; | ||  __/\__ \ |_ 
- 171                         ;  \__\___||___/\__|
- 172                         ;-------------------------------
- 173                                                          ;--TEST PASSED!
- 174                                                          ;===PROCEDURE 'tim1PwmCh1Setup'
- 175                                                          ;@presc16,  
- 176                                                          ;@base16, -> base of counter, 
-                                                                ;ARRL
- 177                                                          ;@comp16, -> pulse width, CCR1 
-                                                                ;content
- 178                                                          ;@mode8,  -> (CCMR) : $60 
-                                                                ;PWM_MODE1
- 179                                                          ;$70 iPWM_MODE2
- 180                                                          ;additional:  $04 fast, $08 
-                                                                ;preload en.
- 181                                                          ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 182                                                          ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 183                                                          ; SP after RETURN +9
- 184                                                          ;stack frame:
- 185                                                          ;[v16a|return|prel|pol|mode|comp
-                                                                ;|base|presc]
- 186                         tim1PwmCh1Setup  
- 187  008152   88                            PUSH     A
- 188                                                          ;allocate memory
- 189  008153   5201                          SUBW     SP, #$01      
- 190                                                          ;-variables
- 191  008155                                 #define  _006_v8a  $00 
- 192  008155                                 #define  _006_prel $05
- 193  008155                                 #define  _006_pol $06
- 194  008155                                 #define  _006_mode $07
- 195  008155                                 #define  _006_compH $08
- 196  008155                                 #define  _006_compL $09
- 197  008155                                 #define  _006_baseH $0A
- 198  008155                                 #define  _006_baseL $0B
- 199  008155                                 #define  _006_prescH $0C
- 200  008155                                 #define  _006_prescL $0D
- 201                                                          ;--disable timer
- 202                                                          ;--disable timer
- 203  008155   72115250                      BRES     $5250,#$00
- 204                                                          ;--load comparand, Hi firstly
- 205  008159   7B08                          LD       A, ($08,SP)
- 206  00815B   C75265                        LD       $5265, A
- 207  00815E   7B09                          LD       A, ($09,SP)
- 208  008160   C75266                        LD       $5266, A
- 209                                                          ;--prescaler high byte firstly
- 210  008163   7B0C                          LD       A, ($0C,SP)
- 211  008165   C75260                        LD       $5260, A      
- 212  008168   7B0D                          LD       A, ($0D,SP)
- 213  00816A   C75261                        LD       $5261, A
- 214                                                          ;--load base, high byte first
- 215  00816D   7B0A                          LD       A, ($0A,SP)
- 216  00816F   C75262                        LD       $5262, A
- 217  008172   7B0B                          LD       A, ($0B,SP)
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 192                         
+ 193                         uart1ReceiverSetup  
+ 194                                                          ;--store A
+ 195  00813C   88                            PUSH     A
+ 196                                                          ;--allocate 1 byte
+ 197  00813D   5201                          SUBW     SP, #$01
+ 198  00813F                                 #define  _U1000_v8a $00 
+ 199  00813F                                 #define  _U1000_parity $05
+ 200  00813F                                 #define  _U1000_stopBits $06 
+ 201  00813F                                 #define  _U1000_dataLength $07
+ 202  00813F                                 #define  _U1000_baudRateH $08
+ 203  00813F                                 #define  _U1000_baudRateL $09
+ 204                                                          ;--disable Rx, Tx
+ 205  00813F   72155235                      BRES     $5235, #$2    ; REN flag
+ 206  008143   72175235                      BRES     $5235, #$3    ; TEN flag
+ 207                                                          ;--when the length 9 bits-jump 
+                                                                ;below
+ 208  008147   A610                          LD       A, #$10
+ 209  008149   1407                          AND      A, ($07,SP)
+ 210  00814B   2605                          JRNE     L_U1000_nsb   ;when 9 bits-go to label
+ 211                                                          ;--when 8 bit set stop bits
+ 212  00814D   7B06                          LD       A, ($06,SP)
+ 213  00814F   C75236                        LD       $5236, A
+ 214                         L_U1000_nsb  
+ 215                                                          ;--write data length and parity
+ 216  008152   7B07                          LD       A,($07,SP)
+ 217  008154   1A05                          OR       A, ($05,SP)
+ 218  008156   C75234                        LD       $5234, A
+ 219                                                          ;prepare UART1_BRR2
+ 220                                                          ;n4 n1
+ 221  008159   7B09                          LD       A, ($09,SP)
+ 222  00815B   A40F                          AND      A, #$0F       ;
+ 223  00815D   6B00                          LD       ( $00,SP),A   ; store nibble 1
+ 224  00815F   7B08                          LD       A, ($08,SP)
+ 225  008161   A4F0                          AND      A, #$f0       ; nibble 4
+ 226  008163   1A00                          OR       A, ($00,SP)   ; n4+n1
+ 227  008165   6B00                          LD       ( $00,SP),A   ; store BRR2 [n4,n1]
+ 228                                                          ;;--send -TO REGISTER BRR2
+ 229  008167   C75233                        LD       $5233 , A
+ 230                                                          ;----n3 n2
+ 231  00816A   7B08                          LD       A, ($08,SP)
+ 232  00816C   4E                            SWAP     A
+ 233  00816D   A4F0                          AND      A, #$F0
+ 234  00816F   6B00                          LD       ( $00,SP),A   ; store n3
+ 235  008171   7B09                          LD       A, ($09,SP)
+ 236  008173   4E                            SWAP     A
+ 237  008174   A40F                          AND      A, #$0f
+ 238  008176   1A00                          OR       A, ( $00,SP)
+ 239                                                          ;--send to register BRR1
+ 240  008178   C75232                        LD       $5232, A
+ 241                                                          ; RIEN interrupt on receive
+ 242  00817B   721A5235                      BSET     $5235, #$5 
+ 243                                                          ;--setting REN bit "Receiver 
+                                                                ;enable"
+ 244  00817F   72145235                      BSET     $5235 , #$2
+ 245                                                          ;--restore stack
+ 246  008183   5B01                          ADDW     SP, #$01
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 10  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 218  008174   C75263                        LD       $5263, A
- 219                                                          ;--load CCMR1
- 220  008177   7B07                          LD       A, ($07,SP)
- 221  008179   C75258                        LD       $5258, A
- 222                                                          ;--polarity
- 223                                                          ;--1) read and store 
- 224                                                          ; content of another channels
- 225  00817C   C6525C                        LD       A, $525C
- 226  00817F   A4F0                          AND      A, #$F0
- 227  008181   6B00                          LD       ($00,SP), A   ; store
- 228                                                          ;--2)load data for loading in 
-                                                                ;register
- 229  008183   7B06                          LD       A, ($06,SP)
- 230  008185   AA01                          OR       A, #$01       ; turn on channel 1
- 231                                                          ;--3)apply others regs
- 232  008187   1A00                          OR       A, ($00,SP)
- 233  008189   C7525C                        LD       $525C, A
- 234                                                          ;--turn on main channels
- 235  00818C   721E526D                      BSET     $526D, #$07   ; MOE bit
- 236                                                          ;--CR1
- 237  008190   7B05                          LD       A, ($05,SP)
- 238  008192   C75250                        LD       $5250, A
- 239  008195   72105250                      BSET     $5250, #$00
- 240                                                          ;free memory
- 241  008199   5B01                          ADDW     SP, #$01
- 242  00819B   84                            POP      A
- 243  00819C   81                            RET      
- 244                                   
- 245                                   
- 246                                                          ;--TEST PASSED!
- 247                                                          ;===PROCEDURE 'tim1PwmCh2Setup'
- 248                                                          ;@presc16,  
- 249                                                          ;@base16, -> base of counter, 
-                                                                ;ARRL
- 250                                                          ;@comp16, ->  pulse width, CCR1 
-                                                                ;content
- 251                                                          ;@mode8,  -> (CCMR) : $60 
-                                                                ;PWM_MODE1
- 252                                                          ;$70 iPWM_MODE2
- 253                                                          ;additional:  $04 fast, $08 
-                                                                ;preload en.
- 254                                                          ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 255                                                          ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 256                                                          ;SP after RETURN +9
- 257                                                          ;stack frame:
- 258                                                          ;[v16a|return|prel|pol|mode|comp
-                                                                ;|base|presc]
- 259                         tim1PwmCh2Setup  
- 260  00819D   88                            PUSH     A
- 261                                                          ;--allocate memory
- 262  00819E   5201                          SUBW     SP , #$01
- 263                                                          ;-variables
- 264  0081A0                                 #define  _007_v8a $00
- 265  0081A0                                 #define  _007_prel $05
- 266  0081A0                                 #define  _007_pol $06
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 247  008185   84                            POP      A
+ 248  008186   81                            RET      
+ 249                                                          ;==PROCEDURE==uart1TransmitterSe
+                                                                ;tup
+ 250                                   
+ 251                         ;@baudRate16, divider
+ 252                         ;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+ 253                                                          ;(set  manually below)
+ 254                         ;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+ 255                         ;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+ 256                         ;-----------
+ 257                         ;SP +5
+ 258                         ;  0  1 2 4    5         6      7      8 
+ 259                         ;[v8a|A|RET|stopBits|dataLength|baudRate]
+ 260                         
+ 261                         uart1TransmitterSetup  
+ 262                                                          ;--store A
+ 263  008187   88                            PUSH     A
+ 264                                                          ;--allocate 1 byte
+ 265  008188   5201                          SUBW     SP, #$01
+ 266  00818A                                 #define  _U1001_v8a $00 
+ 267  00818A                                 #define  _U1001_parity $05
+ 268  00818A                                 #define  _U1001_stopBits $06 
+ 269  00818A                                 #define  _U1001_dataLength $07
+ 270  00818A                                 #define  _U1001_baudRateH $08
+ 271  00818A                                 #define  _U1001_baudRateL $09
+ 272                                                          ;--disable Rx, Tx
+ 273  00818A   72155235                      BRES     $5235, #$2    ; REN flag
+ 274  00818E   72175235                      BRES     $5235, #$3    ; TEN flag
+ 275                                                          ;--when the length 9 bits-jump 
+                                                                ;below
+ 276  008192   A610                          LD       A, #$10
+ 277  008194   1407                          AND      A, ($07,SP)
+ 278  008196   2605                          JRNE     L_U1001_nsb   ;when 9 bits-go to label
+ 279                                                          ;--when 8 bit set stop bits
+ 280  008198   7B06                          LD       A, ($06,SP)
+ 281  00819A   C75236                        LD       $5236, A
+ 282                         L_U1001_nsb  
+ 283                                                          ;--write data length and parity
+ 284  00819D   7B07                          LD       A,($07,SP)
+ 285  00819F   1A05                          OR       A, ($05,SP)
+ 286  0081A1   C75234                        LD       $5234, A
+ 287                                                          ;prepare UART1_BRR2
+ 288                                                          ;n4 n1
+ 289  0081A4   7B09                          LD       A, ($09,SP)
+ 290  0081A6   A40F                          AND      A, #$0F       ;
+ 291  0081A8   6B00                          LD       ( $00,SP),A   ; store nibble 1
+ 292  0081AA   7B08                          LD       A, ($08,SP)
+ 293  0081AC   A4F0                          AND      A, #$f0       ; nibble 4
+ 294  0081AE   1A00                          OR       A, ($00,SP)   ; n4+n1
+ 295  0081B0   6B00                          LD       ( $00,SP),A   ; store BRR2 [n4,n1]
+ 296                                                          ;;--send -TO REGISTER BRR2
+ 297  0081B2   C75233                        LD       $5233 , A
+ 298                                                          ;----n3 n2
+ 299  0081B5   7B08                          LD       A, ($08,SP)
+ 300  0081B7   4E                            SWAP     A
+ 301  0081B8   A4F0                          AND      A, #$F0
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 11  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 267  0081A0                                 #define  _007_mode $07
- 268  0081A0                                 #define  _007_compH $08
- 269  0081A0                                 #define  _007_compL $09
- 270  0081A0                                 #define  _007_baseH $0A
- 271  0081A0                                 #define  _007_baseL $0B
- 272  0081A0                                 #define  _007_prescH $0C
- 273  0081A0                                 #define  _007_prescL $0D
- 274                                                          ;--disable timer
- 275  0081A0   72115250                      BRES     $5250,#$00
- 276                                                          ;--load comparand, Hi firstly
- 277  0081A4   7B08                          LD       A, ($08,SP)
- 278  0081A6   C75267                        LD       $5267, A
- 279  0081A9   7B09                          LD       A, ($09,SP)
- 280  0081AB   C75268                        LD       $5268, A
- 281                                                          ;--prescaler high byte firstly
- 282  0081AE   7B0C                          LD       A, ($0C,SP)
- 283  0081B0   C75260                        LD       $5260, A      
- 284  0081B3   7B0D                          LD       A, ($0D,SP)
- 285  0081B5   C75261                        LD       $5261, A
- 286                                                          ;--load base, high byte first
- 287  0081B8   7B0A                          LD       A, ($0A,SP)
- 288  0081BA   C75262                        LD       $5262, A
- 289  0081BD   7B0B                          LD       A, ($0B,SP)
- 290  0081BF   C75263                        LD       $5263, A
- 291                                                          ;--load CCMR2
- 292  0081C2   7B07                          LD       A, ($07,SP)
- 293  0081C4   C75259                        LD       $5259, A
- 294                                                          ;--polarity
- 295                                                          ; 1)store content of another 
-                                                                ;channels
- 296  0081C7   C6525C                        LD       A, $525C
- 297  0081CA   A40F                          AND      A, #$0F
- 298  0081CC   6B00                          LD       ($00,SP), A   ; store
- 299                                                          ;--2)load data for loading in 
-                                                                ;register
- 300  0081CE   7B06                          LD       A, ($06,SP)
- 301  0081D0   AA01                          OR       A, #$01       ; turn on channel 
- 302  0081D2   4E                            SWAP     A             ;  A << 4
- 303                                                          ;--3) apply another regs
- 304  0081D3   1A00                          OR       A, ($00,SP)
- 305  0081D5   C7525C                        LD       $525C, A
- 306                                                          ;--turn on main channels
- 307  0081D8   721E526D                      BSET     $526D, #$07   ; MOE bit
- 308                                                          ;--CR1
- 309  0081DC   7B05                          LD       A, ($05,SP)
- 310  0081DE   C75250                        LD       $5250, A
- 311  0081E1   72105250                      BSET     $5250, #$00
- 312                                                          ;--fre memory
- 313  0081E5   5B01                          ADDW     SP, #$01
- 314  0081E7   84                            POP      A
- 315  0081E8   81                            RET      
- 316                                   
- 317                                                          ;--TEST PASSED!	 
- 318                                                          ;===PROCEDURE 'tim1PwmCh3Setup'
- 319                                                          ;@presc16,  
- 320                                                          ;@base16, -> base of counter, 
-                                                                ;ARRL
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 302  0081BA   6B00                          LD       ( $00,SP),A   ; store n3
+ 303  0081BC   7B09                          LD       A, ($09,SP)
+ 304  0081BE   4E                            SWAP     A
+ 305  0081BF   A40F                          AND      A, #$0f
+ 306  0081C1   1A00                          OR       A, ( $00,SP)
+ 307                                                          ;--send to register BRR1
+ 308  0081C3   C75232                        LD       $5232, A
+ 309                                                          ; TCIEN interrupt on tx 
+                                                                ;complete
+ 310  0081C6   721C5235                      BSET     $5235, #$6 
+ 311                                                          ;--setting TEN bit "Transmitter 
+                                                                ;enable"
+ 312  0081CA   72165235                      BSET     $5235 , #$3
+ 313                                                          ;--restore stack
+ 314  0081CE   5B01                          ADDW     SP, #$01
+ 315  0081D0   84                            POP      A
+ 316  0081D1   81                            RET      
+ 317                         ;==PROCEDURE==uart1DuplexSetupIT
+ 318                         ;--set up Receiver and Transmitter
+ 319                         ; Turn on  TC, RXNE interrupts.
+ 320                         ;---------------------
+ 321                         ;@baudRate16, divider
+ 322                         ;@dataLength8, $10->9bits (1stop 1 start) , $00->8bits
+ 323                                                          ;(set  manually below)
+ 324                         ;@stopBits8, active only when 8 bits: $00->1bit, $20->2bits
+ 325                         ;@parity8, $00-disable, $04-enable: ($02-odd OR $00-even)
+ 326                         ;-----------
+ 327                         ;SP +5
+ 328                         ;  0  1 2 4    5         6      7      8 
+ 329                         ;[v8a|A|RET|stopBits|dataLength|baudRate]
+ 330                         
+ 331                         uart1DuplexSetupIT  
+ 332                                                          ;--store A
+ 333  0081D2   88                            PUSH     A
+ 334                                                          ;--allocate 1 byte
+ 335  0081D3   5201                          SUBW     SP, #$01
+ 336  0081D5                                 #define  _U1003_v8a $00 
+ 337  0081D5                                 #define  _U1003_parity $05
+ 338  0081D5                                 #define  _U1003_stopBits $06 
+ 339  0081D5                                 #define  _U1003_dataLength $07
+ 340  0081D5                                 #define  _U1003_baudRateH $08
+ 341  0081D5                                 #define  _U1003_baudRateL $09
+ 342                                                          ;--disable Rx, Tx
+ 343  0081D5   72155235                      BRES     $5235, #$2    ; REN flag
+ 344  0081D9   72175235                      BRES     $5235, #$3    ; TEN flag
+ 345                                                          ;--when the length 9 bits-jump 
+                                                                ;below
+ 346  0081DD   A610                          LD       A, #$10
+ 347  0081DF   1407                          AND      A, ($07,SP)
+ 348  0081E1   2605                          JRNE     L_U1003_nsb   ;when 9 bits-go to label
+ 349                                                          ;--when 8 bit set stop bits
+ 350  0081E3   7B06                          LD       A, ($06,SP)
+ 351  0081E5   C75236                        LD       $5236, A
+ 352                         L_U1003_nsb  
+ 353                                                          ;--write data length and parity
+ 354  0081E8   7B07                          LD       A,($07,SP)
+ 355  0081EA   1A05                          OR       A, ($05,SP)
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 12  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 321                                                          ;@comp16, ->  pulse width, CCR1 
-                                                                ;content
- 322                                                          ;@mode8,  -> (CCMR) : $60 
-                                                                ;PWM_MODE1
- 323                                                          ;$70 iPWM_MODE2
- 324                                                          ;additional:  $04 fast, $08 
-                                                                ;preload en.
- 325                                                          ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 326                                                          ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 327                                   
- 328                                                          ;stack frame:
- 329                                                          ;[v16a|return|prel|pol|mode|comp
-                                                                ;|base|presc]
- 330                         tim1PwmCh3Setup  
- 331  0081E9   88                            PUSH     A
- 332                                                          ;--allocate memory
- 333  0081EA   5201                          SUBW     SP , #$01
- 334                                                          ;-variables
- 335  0081EC                                 #define  _008_v8a $00
- 336  0081EC                                 #define  _008_prel $05
- 337  0081EC                                 #define  _008_pol $06
- 338  0081EC                                 #define  _008_mode $07
- 339  0081EC                                 #define  _008_compH $08
- 340  0081EC                                 #define  _008_compL $09
- 341  0081EC                                 #define  _008_baseH $0A
- 342  0081EC                                 #define  _008_baseL $0B
- 343  0081EC                                 #define  _008_prescH $0C
- 344  0081EC                                 #define  _008_prescL $0D
- 345                                                          ;--disable timer
- 346  0081EC   72115250                      BRES     $5250,#$00
- 347                                                          ;--load comparand, Hi firstly
- 348  0081F0   7B08                          LD       A, ($08,SP)
- 349  0081F2   C75269                        LD       $5269, A
- 350  0081F5   7B09                          LD       A, ($09,SP)
- 351  0081F7   C7526A                        LD       $526A, A
- 352                                                          ;--prescaler high byte firstly
- 353  0081FA   7B0C                          LD       A, ($0C,SP)
- 354  0081FC   C75260                        LD       $5260, A      
- 355  0081FF   7B0D                          LD       A, ($0D,SP)
- 356  008201   C75261                        LD       $5261, A
- 357                                                          ;--load base, high byte first
- 358  008204   7B0A                          LD       A, ($0A,SP)
- 359  008206   C75262                        LD       $5262, A
- 360  008209   7B0B                          LD       A, ($0B,SP)
- 361  00820B   C75263                        LD       $5263, A
- 362                                                          ;--load CCMR1
- 363  00820E   7B07                          LD       A, ($07,SP)
- 364  008210   C7525A                        LD       $525A, A
- 365                                                          ;--polarity
- 366                                                          ; 1)store content of another 
-                                                                ;channels
- 367  008213   C6525D                        LD       A, $525D
- 368  008216   A4F0                          AND      A, #$F0
- 369  008218   6B00                          LD       ($00,SP), A   ; store
- 370                                                          ;--2)load data for loading in 
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 356  0081EC   C75234                        LD       $5234, A
+ 357                                                          ;prepare UART1_BRR2
+ 358                                                          ;n4 n1
+ 359  0081EF   7B09                          LD       A, ($09,SP)
+ 360  0081F1   A40F                          AND      A, #$0F       ;
+ 361  0081F3   6B00                          LD       ( $00,SP),A   ; store nibble 1
+ 362  0081F5   7B08                          LD       A, ($08,SP)
+ 363  0081F7   A4F0                          AND      A, #$f0       ; nibble 4
+ 364  0081F9   1A00                          OR       A, ($00,SP)   ; n4+n1
+ 365  0081FB   6B00                          LD       ( $00,SP),A   ; store BRR2 [n4,n1]
+ 366                                                          ;;--send -TO REGISTER BRR2
+ 367  0081FD   C75233                        LD       $5233 , A
+ 368                                                          ;----n3 n2
+ 369  008200   7B08                          LD       A, ($08,SP)
+ 370  008202   4E                            SWAP     A
+ 371  008203   A4F0                          AND      A, #$F0
+ 372  008205   6B00                          LD       ( $00,SP),A   ; store n3
+ 373  008207   7B09                          LD       A, ($09,SP)
+ 374  008209   4E                            SWAP     A
+ 375  00820A   A40F                          AND      A, #$0f
+ 376  00820C   1A00                          OR       A, ( $00,SP)
+ 377                                                          ;--send to register BRR1
+ 378  00820E   C75232                        LD       $5232, A
+ 379                                                          ;turn on interrupt on tx 
+                                                                ;complete, Rx not empty
+ 380  008211   721C5235                      BSET     $5235, #$6    ; TCIEN
+ 381  008215   721A5235                      BSET     $5235, #$5    ; RIEN
+ 382                                                          ;--set  "Transmitter enable", 
+                                                                ;"receiver enable"
+ 383  008219   72165235                      BSET     $5235 , #$3
+ 384  00821D   72145235                      BSET     $5235 , #$2
+ 385                                                          ;--restore stack
+ 386  008221   5B01                          ADDW     SP, #$01
+ 387  008223   84                            POP      A
+ 388  008224   81                            RET      
+ 389                                                          ;====P R O C E D U R E===turn on
+                                                                ; clk bus
+ 390                                                          ;@peripherial8
+ 391                                                          ;TIM1-$80,TIM3-$40,TIM2/5-$20,TI
+                                                                ;M4/6-$10,UART-see datasheet,
+ 392                                                          ;SPI-$2,I2C-1
+ 393                                                          ;STACK after return +1
+ 394                         clkBusPeripherial1  
+ 395  008225   88                            PUSH     A
+ 396  008226   7B04                          LD       A, ($04,SP)
+ 397  008228   C750C7                        LD       $50C7, A
+ 398  00822B   84                            POP      A
+ 399  00822C   81                            RET      
+ 400                                                          ;====P R O C E D U R E===turn on
+                                                                ; clk bus
+ 401                                                          ;@peripherial8
+ 402                                                          ;CAN-$80, ADC-$08, AWU-$04
+ 403                                                          ;STACK after return +1
+ 404                         clkBusPeripherial2  
+ 405  00822D   88                            PUSH     A
+ 406  00822E   7B04                          LD       A, ($04,SP)
+ 407  008230   C750CA                        LD       $50CA, A
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 13  Assembler
                                                d:\stm8\dbg1\main.asm
 
-                                                                ;register
- 371  00821A   7B06                          LD       A, ($06,SP)
- 372  00821C   AA01                          OR       A, #$01       ; turn on channel 
- 373                                                          ;--3)apply another regs
- 374  00821E   1A00                          OR       A, ($00,SP)
- 375  008220   C7525D                        LD       $525D, A
- 376                                                          ;--turn on main channels
- 377  008223   721E526D                      BSET     $526D, #$07   ; MOE bit
- 378                                                          ;--CR1
- 379  008227   7B05                          LD       A, ($05,SP)
- 380  008229   C75250                        LD       $5250, A
- 381  00822C   72105250                      BSET     $5250, #$00
- 382                                                          ;--free memory
- 383  008230   5B01                          ADDW     SP, #$01
- 384  008232   84                            POP      A
- 385  008233   81                            RET      
- 386                         
- 387                                   
- 388                                   
- 389                                                          ;--TEST PASSED!	
- 390                                                          ;===PROCEDURE 'tim1PwmCh4Setup'
- 391                                                          ;@presc16,  
- 392                                                          ;@base16, -> base of counter, 
-                                                                ;ARRL
- 393                                                          ;@comp16, ->  pulse width, CCR1 
-                                                                ;content
- 394                                                          ;@mode8,  -> (CCMR) : $60 
-                                                                ;PWM_MODE1
- 395                                                          ;$70 iPWM_MODE2
- 396                                                          ;additional:  $04 fast, $08 
-                                                                ;preload en.
- 397                                                          ;@polarity8 -> (CCER)  $00 
-                                                                ;active HI,$02 active low
- 398                                                          ;@preload8  ->  $80 preload 
-                                                                ;enable, CR1 content
- 399                                   
- 400                                                          ;stack frame:
- 401                                                          ;[v16a|return|prel|pol|mode|comp
-                                                                ;|base|presc]
- 402                         tim1PwmCh4Setup  
- 403  008234   88                            PUSH     A
- 404                                                          ;--allocate memory
- 405  008235   5201                          SUBW     SP , #$01
- 406                                                          ;-variables
- 407  008237                                 #define  _009_v8a $00
- 408  008237                                 #define  _009_prel $05
- 409  008237                                 #define  _009_pol $06
- 410  008237                                 #define  _009_mode $07
- 411  008237                                 #define  _009_compH $08
- 412  008237                                 #define  _009_compL $09
- 413  008237                                 #define  _009_baseH $0A
- 414  008237                                 #define  _009_baseL $0B
- 415  008237                                 #define  _009_prescH $0C
- 416  008237                                 #define  _009_prescL $0D
- 417                                                          ;--disable timer
- 418  008237   72115250                      BRES     $5250,#$00
- 419                                                          ;--load comparand, Hi firstly
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 408  008233   84                            POP      A
+ 409  008234   81                            RET      
+ 410                                                          ;===P R O C E D U R E=switch to 
+                                                                ;Crystal
+ 411                                                          ;--NO PARAMS
+ 412                                                          ;STACK after return 0
+ 413                         clkSwitchToCrystal  
+ 414  008235   88                            PUSH     A
+ 415                                                          ;--tuurn on HSE oscillator
+ 416  008236   A601                          LD       A, #$01
+ 417  008238   C750C1                        LD       $50C1, A
+ 418                         clkSwitchToCrystal_hsi_rdy  
+ 419                                                          ;--wait until crystal oscillator
+                                                                ; ready (HSERDY)
+ 420  00823B   720350C1FB                    BTJF     $50C1, #$01, clkSwitchToCrystal_hsi_rdy
+ 421                                                          ;---Enable the switching 
+                                                                ;mechanism
+ 422  008240   C650C5                        LD       A, $50C5
+ 423  008243   AA02                          OR       A, #$02
+ 424  008245   C750C5                        LD       $50C5, A
+ 425                                                          ;---select source clock
+ 426                                                          ;0xE1: HSI selected as master 
+                                                                ;clock source (reset value)
+ 427                                                          ;0xD2: LSI selected as master 
+                                                                ;clock source (only if LSI_EN
+ 428                                                          ;option bit is set)
+ 429                                                          ;0xB4: HSE selected as master 
+                                                                ;clock source
+ 430  008248   A6B4                          LD       A, #$B4
+ 431  00824A   C750C4                        LD       $50C4, A
+ 432  00824D   9D                            NOP      
+ 433  00824E   84                            POP      A
+ 434  00824F   81                            RET      
+ 435                                   
+ 436                                   
+ 437                                                          ;==P R O C E D U R E=="set HSI 
+                                                                ;divider"
+ 438                                                          ;--@ char divider
+ 439                                                          ;STACK after return +1
+ 440                         clkSetHsiDivider  
+ 441                                                          ;--store registers A,X,Y,CC 
+                                                                ;(1+2+2+1=6Bytes)
+ 442  008250   88                            PUSH     A
+ 443                                                          ;-read default value 
+ 444  008251   C650C6                        LD       A, $50C6
+ 445                                                          ;---clear all the hsi divider 
+                                                                ;bits
+ 446  008254   A4E7                          AND      A, #$E7
+ 447                                                          ;--1st paprameter has offset 9 
+                                                                ;bytes
+ 448                                                          ; because A,X,Y,CC,SP has ben 
+                                                                ;stored later 
+ 449  008256   1A04                          OR       A, ($04,SP)
+ 450                                                          ;---update CLK_CKDIVR
+ 451  008258   C750C6                        LD       $50C6, A
+ 452                                                          ;--restore registers
+ 453  00825B   84                            POP      A
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 14  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 420  00823B   7B08                          LD       A, ($08,SP)
- 421  00823D   C7526B                        LD       $526B, A
- 422  008240   7B09                          LD       A, ($09,SP)
- 423  008242   C7526C                        LD       $526C, A
- 424                                                          ;--prescaler high byte firstly
- 425  008245   7B0C                          LD       A, ($0C,SP)
- 426  008247   C75260                        LD       $5260, A      
- 427  00824A   7B0D                          LD       A, ($0D,SP)
- 428  00824C   C75261                        LD       $5261, A
- 429                                                          ;--load base, high byte first
- 430  00824F   7B0A                          LD       A, ($0A,SP)
- 431  008251   C75262                        LD       $5262, A
- 432  008254   7B0B                          LD       A, ($0B,SP)
- 433  008256   C75263                        LD       $5263, A
- 434                                                          ;--load CCMR
- 435  008259   7B07                          LD       A, ($07,SP)
- 436  00825B   C7525B                        LD       $525B, A
- 437                                                          ;--polarity
- 438                         ; 1)store content of another channels
- 439  00825E   C6525D                        LD       A, $525D
- 440  008261   A40F                          AND      A, #$0F
- 441  008263   6B00                          LD       ($00,SP), A   ; store
- 442                                                          ;--2)load data for loading in 
-                                                                ;register
- 443  008265   7B06                          LD       A, ($06,SP)
- 444  008267   AA01                          OR       A, #$01       ; turn on channel 
- 445  008269   4E                            SWAP     A             ;  A << 4
- 446                                                          ;--3) apply another regs
- 447  00826A   1A00                          OR       A,  ($00,SP)
- 448  00826C   C7525D                        LD       $525D, A
- 449                                                          ;--turn on main channels
- 450  00826F   721E526D                      BSET     $526D, #$07   ; MOE bit
- 451                                                          ;--CR1
- 452  008273   7B05                          LD       A, ($05,SP)
- 453  008275   C75250                        LD       $5250, A
- 454  008278   72105250                      BSET     $5250, #$00
- 455                                                          ;--free mem
- 456  00827C   5B01                          ADDW     SP, #$01
- 457  00827E   84                            POP      A
- 458  00827F   81                            RET      
- 459                                   
- 460  008280                       startAdcSingleScan  MACRO    max_adc_ch
- 461                                   LD       A, $5400
- 462                                   AND      A, #$7F       ; clear EOC
- 463                                   OR       A, max_adc_ch
- 464                                   LD       $5400, A
- 465                                   BSET     $5401, #$00
- 466  008280                                 MEND     
- 467                                   
- 468                                                          ;---STM8 ADC initialization 
-                                                                ;library
- 469                         ;Author : Andrii Androsovych
- 470                                                          ;====P R O C E D U R 
-                                                                ;E===adcSingleModeSetup
- 471                                                          ;@channel8, $00->AIN0, 
-                                                                ;$01->AIN1, #$0F->AIN15
- 472                                                          ;@prescaler, $00->/2, $10->/3, 
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 454  00825C   81                            RET      
+ 455                                   
+ 456                                                          ;======P R O C e D U R E==="set 
+                                                                ;CPU divider"
+ 457                                                          ;@ char divider 
+ 458                                                          ;STACK after return +1
+ 459                         clkSetCpuDivider  
+ 460                                                          ;--store registers A,X,Y,CC 
+                                                                ;(1+2+2+1=6Bytes)
+ 461  00825D   88                            PUSH     A
+ 462                                                          ;-read default value 
+ 463  00825E   C650C6                        LD       A, $50C6
+ 464                                                          ;---clear all the hsi divider 
+                                                                ;bits
+ 465  008261   A4F8                          AND      A, #$f8
+ 466                                                          ;--1st paprameter has offset 9 
+                                                                ;bytes
+ 467                                                          ; because A,X,Y,CC,SP has ben 
+                                                                ;stored later
+ 468  008263   1A04                          OR       A, ($04,SP)
+ 469                                                          ;---update CLK_CKDIVR
+ 470  008265   C750C6                        LD       $50C6, A
+ 471                                                          ;--restore registers
+ 472  008268   84                            POP      A
+ 473  008269   81                            RET      
+ 474                                   
+ 475                                   
+ 476                                   
+ 477                         ;------I  S  R----------
+ 478                         
+ 479                         tim4Isr   
+ 480  00826A   80                            IRET     
+ 481                                   
+ 482                                   
+ 483                                   
+ 484                         onTim1Update  
+ 485  00826B   80                            IRET     
+ 486                         
+ 487                         uart1OnReceive  
+ 488  00826C   7216500A                      BSET     $500A, #$3
+ 489  008270   C65231                        LD       A, $5231 
+ 490  008273   72100004                      BSET     _semaphore, #$0   ;;set semaphore
+ 491  008277   B750                          LD       _received_char, A   ;store symbol for echo
+ 492                                                          ;--test on errors
+ 493  008279   C65230                        LD       A, $5230
+ 494  00827C   A40F                          AND      A, #$0F
+ 495  00827E   721B500A                      BRES     $500A, #$5    ;turn OFF error LED
+ 496  008282   2704                          JREQ     _NO_ERR_RX    ; ? are there no errors?
+ 497  008284   721A500A                      BSET     $500A, #$5    ;turn ON error LED
+ 498                         _NO_ERR_RX  
+ 499                                                          ;when data has been transmitted
+ 500  008288   720D523005                    BTJF     $5230, #$6, NO_DATA_IN_TC
+ 501                         WAIT_UNTIL_TC  
+ 502                                                          ;wait until transmission 
+                                                                ;complete
+ 503  00828D   720D5230FB                    BTJF     $5230, #$6, WAIT_UNTIL_TC
+ 504                         NO_DATA_IN_TC  
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 15  Assembler
                                                d:\stm8\dbg1\main.asm
 
-                                                                ;$20->/4, $30->/6, $40->/8, 
-                                                                ;$50->/10
- 473                                                          ;ADC DATA is right aligned!
- 474                                                          ;SP+2
- 475                                                          ;----------
- 476                                                          ;stack frame
- 477                                                          ;[A|RET|prescaler|channel]
- 478                         adcSingleModeSetup  
- 479  008280                                 #define  _001_ch $05
- 480  008280                                 #define  _001_presc $04
- 481                                                          ;--store 
- 482  008280   88                            PUSH     A
- 483                                                          ;--disable ADC
- 484  008281   72115401                      BRES     $5401, #$00
- 485                                                          ;--load channel
- 486  008285   7B05                          LD       A, ($05,SP)
- 487  008287   A40F                          AND      A, #$0F
- 488  008289   C75400                        LD       $5400, A
- 489                                                          ;-result alignment- right
- 490  00828C   72165402                      BSET     $5402, #$03   ; ALIGN bit
- 491                                                          ;--prescaler
- 492  008290   7B04                          LD       A, ($04,SP)
- 493  008292   A4F0                          AND      A, #$F0
- 494  008294   AA01                          OR       A, #$01       ; ADON
- 495  008296   C75401                        LD       $5401, A
- 496                                                          ;--restore
- 497  008299   84                            POP      A
- 498  00829A   81                            RET      
- 499                                   
- 500                                                          ;====P R O C E D U R 
-                                                                ;E===adcSingleScanModeSetup,
- 501                                                          ;@channel8, $00->AIN0, 
-                                                                ;$01->AIN1, #$0F->AIN15
- 502                                                          ;@prescaler, $00->/2, $10->/3, 
-                                                                ;$20->/4, $30->/6, $40->/8, 
-                                                                ;$50->/10
- 503                                                          ;ADC DATA is right aligned!
- 504                                                          ;SP+2
- 505                                                          ;----------
- 506                                                          ;stack frame
- 507                                                          ;[A|RET|prescaler|channel]
- 508                                                          ;--NOTE: result stores in 
-                                                                ;ADC_DBxRH, ADC_DBxRL
- 509                         adcSingleScanModeSetup  
- 510  00829B                                 #define  $05 $05
- 511  00829B                                 #define  $04 $04
- 512                                                          ;--store 
- 513  00829B   88                            PUSH     A
- 514                                                          ;--disable ADC
- 515  00829C   72115401                      BRES     $5401, #$00
- 516                                                          ;--load channel
- 517  0082A0   7B05                          LD       A, ($05,SP)
- 518  0082A2   A40F                          AND      A, #$0F
- 519  0082A4   C75400                        LD       $5400, A
- 520                                                          ;- right alignment  scan
- 521  0082A7   72165402                      BSET     $5402, #$03   ; ALIGN bit
- 522  0082AB   72125402                      BSET     $5402, #$01   ; SCAN bit
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 505  008292   9D                            NOP      
+ 506                         
+ 507  008293   7217500A                      BRES     $500A, #$3
+ 508  008297   9D                            NOP      
+ 509  008298   80                            IRET     
+ 510                                   
+ 511                                   
+ 512                         uart1OnTransmit  
+ 513  008299   7218500A                      BSET     $500A, #$4
+ 514  00829D   721F500A                      BRES     $500A, #$7
+ 515  0082A1   C65230                        LD       A, $5230
+ 516  0082A4   721D5230                      BRES     $5230, #$6
+ 517  0082A8   721F5230                      BRES     $5230, #$7
+ 518                                                          ;--test on errors
+ 519  0082AC   A40F                          AND      A, #$0F
+ 520  0082AE   721B500A                      BRES     $500A, #$5    ;turn OFF error LED
+ 521  0082B2   2704                          JREQ     _NO_ERR_TX    ; ? are there no errors?
+ 522  0082B4   721A500A                      BSET     $500A, #$5    ;turn ON error LED
+ 523                         _NO_ERR_TX  
+ 524  0082B8   9D                            NOP      
+ 525  0082B9   9D                            NOP      
+ 526  0082BA   7219500A                      BRES     $500A, #$4
+ 527  0082BE   80                            IRET     
+ 528                         
+ 529                         
+ 530  0082BF                                 interrupt NonHandledInterrupt
+ 531                         NonHandledInterrupt.l  
+ 532  0082BF   80                            iret     
+ 533                                   segment  'vectit'
+ 534  008000   8200808E                      dc.l     {$82000000+main}  ; reset
+ 535  008004   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; trap
+ 536  008008   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq0
+ 537  00800C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq1
+ 538  008010   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq2
+ 539  008014   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq3
+ 540  008018   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq4
+ 541  00801C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq5
+ 542  008020   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq6
+ 543  008024   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq7
+ 544  008028   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq8
+ 545  00802C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq9
+ 546  008030   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq10
+ 547  008034   8200826B                      dc.l     {$82000000+onTim1Update}  ; irq11
+ 548  008038   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq12
+ 549  00803C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq13
+ 550  008040   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq14
+ 551  008044   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq15
+ 552  008048   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq16
+ 553  00804C   82008299                      dc.l     {$82000000+uart1OnTransmit}  ; irq17
+ 554  008050   8200826C                      dc.l     {$82000000+uart1OnReceive}  ; irq18
+ 555  008054   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq19
+ 556  008058   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq20
+ 557  00805C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq21
+ 558  008060   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq22
+ 559  008064   8200826A                      dc.l     {$82000000+tim4Isr}  ; irq23
+ 560  008068   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq24
+ 561  00806C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq25
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 16  Assembler
                                                d:\stm8\dbg1\main.asm
 
- 523                                                          ;--prescaler
- 524  0082AF   7B04                          LD       A, ($04,SP)
- 525  0082B1   A4F0                          AND      A, #$F0
- 526  0082B3   AA01                          OR       A, #$01       ; ADON
- 527  0082B5   C75401                        LD       $5401, A
- 528  0082B8   72105401                      BSET     $5401, #$00   ; start
- 529                                                          ;--restore
- 530  0082BC   84                            POP      A
- 531  0082BD   81                            RET      
- 532                                   
- 533                                                          ;====P R O C E D U R E===turn on
-                                                                ; clk bus
- 534                                                          ;@peripherial8
- 535                                                          ;TIM1-$80,TIM3-$40,TIM2/5-$20,TI
-                                                                ;M4/6-$10,UART-see datasheet,
- 536                                                          ;SPI-$2,I2C-1
- 537                                                          ;STACK after return +1
- 538                         clkBusPeripherial1  
- 539  0082BE   88                            PUSH     A
- 540  0082BF   7B04                          LD       A, ($04,SP)
- 541  0082C1   C750C7                        LD       $50C7, A
- 542  0082C4   84                            POP      A
- 543  0082C5   81                            RET      
- 544                                                          ;====P R O C E D U R E===turn on
-                                                                ; clk bus
- 545                                                          ;@peripherial8
- 546                                                          ;CAN-$80, ADC-$08, AWU-$04
- 547                                                          ;STACK after return +1
- 548                         clkBusPeripherial2  
- 549  0082C6   88                            PUSH     A
- 550  0082C7   7B04                          LD       A, ($04,SP)
- 551  0082C9   C750CA                        LD       $50CA, A
- 552  0082CC   84                            POP      A
- 553  0082CD   81                            RET      
- 554                                                          ;===P R O C E D U R E=switch to 
-                                                                ;Crystal
- 555                                                          ;--NO PARAMS
- 556                                                          ;STACK after return 0
- 557                         clkSwitchToCrystal  
- 558  0082CE   88                            PUSH     A
- 559                                                          ;--tuurn on HSE oscillator
- 560  0082CF   A601                          LD       A, #$01
- 561  0082D1   C750C1                        LD       $50C1, A
- 562                         clkSwitchToCrystal_hsi_rdy  
- 563                                                          ;--wait until crystal oscillator
-                                                                ; ready (HSERDY)
- 564  0082D4   720350C1FB                    BTJF     $50C1, #$01, clkSwitchToCrystal_hsi_rdy
- 565                                                          ;---Enable the switching 
-                                                                ;mechanism
- 566  0082D9   C650C5                        LD       A, $50C5
- 567  0082DC   AA02                          OR       A, #$02
- 568  0082DE   C750C5                        LD       $50C5, A
- 569                                                          ;---select source clock
- 570                                                          ;0xE1: HSI selected as master 
-                                                                ;clock source (reset value)
- 571                                                          ;0xD2: LSI selected as master 
-                                                                ;clock source (only if LSI_EN
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
+ 562  008070   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq26
+ 563  008074   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq27
+ 564  008078   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq28
+ 565  00807C   820082BF                      dc.l     {$82000000+NonHandledInterrupt}  ; irq29
+ 566                         
+ 567  008080                                 end      
+STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Sat Aug 31 22:10:56 2024
 Page 17  Assembler
-                                               d:\stm8\dbg1\main.asm
-
- 572                                                          ;option bit is set)
- 573                                                          ;0xB4: HSE selected as master 
-                                                                ;clock source
- 574  0082E1   A6B4                          LD       A, #$B4
- 575  0082E3   C750C4                        LD       $50C4, A
- 576  0082E6   9D                            NOP      
- 577  0082E7   9D                            NOP      
- 578  0082E8   9D                            NOP      
- 579  0082E9   9D                            NOP      
- 580  0082EA   84                            POP      A
- 581  0082EB   81                            RET      
- 582                                   
- 583                                   
- 584                                                          ;==P R O C E D U R E=="set HSI 
-                                                                ;divider"
- 585                                                          ;--@ char divider
- 586                                                          ;STACK after return +1
- 587                         clkSetHsiDivider  
- 588                                                          ;--store registers A,X,Y,CC 
-                                                                ;(1+2+2+1=6Bytes)
- 589  0082EC   88                            PUSH     A
- 590                                                          ;-read default value 
- 591  0082ED   C650C6                        LD       A, $50C6
- 592                                                          ;---clear all the hsi divider 
-                                                                ;bits
- 593  0082F0   A4E7                          AND      A, #$E7
- 594                                                          ;--1st paprameter has offset 9 
-                                                                ;bytes
- 595                                                          ; because A,X,Y,CC,SP has ben 
-                                                                ;stored later 
- 596  0082F2   1A04                          OR       A, ($04,SP)
- 597                                                          ;---update CLK_CKDIVR
- 598  0082F4   C750C6                        LD       $50C6, A
- 599                                                          ;--restore registers
- 600  0082F7   84                            POP      A
- 601  0082F8   81                            RET      
- 602                                   
- 603                                                          ;======P R O C e D U R E==="set 
-                                                                ;CPU divider"
- 604                                                          ;@ char divider 
- 605                                                          ;STACK after return +1
- 606                         clkSetCpuDivider  
- 607                                                          ;--store registers A,X,Y,CC 
-                                                                ;(1+2+2+1=6Bytes)
- 608  0082F9   88                            PUSH     A
- 609                                                          ;-read default value 
- 610  0082FA   C650C6                        LD       A, $50C6
- 611                                                          ;---clear all the hsi divider 
-                                                                ;bits
- 612  0082FD   A4F8                          AND      A, #$f8
- 613                                                          ;--1st paprameter has offset 9 
-                                                                ;bytes
- 614                                                          ; because A,X,Y,CC,SP has ben 
-                                                                ;stored later
- 615  0082FF   1A04                          OR       A, ($04,SP)
- 616                                                          ;---update CLK_CKDIVR
- 617  008301   C750C6                        LD       $50C6, A
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
-Page 18  Assembler
-                                               d:\stm8\dbg1\main.asm
-
- 618                                                          ;--restore registers
- 619  008304   84                            POP      A
- 620  008305   81                            RET      
- 621                                   
- 622                                   
- 623                                   
- 624                         ;------I  S  R----------
- 625                         
- 626                         tim4Isr   
- 627                                                          ;--clear flag
- 628  008306   72115344                      BRES     $5344, #$00
- 629  00830A   901C500A                      BCPL     $500A, #$06
- 630  00830E   80                            IRET     
- 631                                   
- 632                                   
- 633                                   
- 634                         onTim1Update  
- 635                                                          ;--clear flag
- 636  00830F   A600                          LD       A, #$00
- 637  008311   C75255                        LD       $5255, A
- 638                                                          ;--load ADC To PWM register
- 639                                                          ;;AIN 3, 4,5,6
- 640  008314   C653E6                        LD       A, $53E6
- 641  008317   C75265                        LD       $5265, A
- 642  00831A   C653E7                        LD       A, $53E7
- 643  00831D   C75266                        LD       $5266, A
- 644                                                          ;--4
- 645  008320   C653E8                        LD       A, $53E8
- 646  008323   C75267                        LD       $5267, A
- 647  008326   C653E9                        LD       A, $53E9
- 648  008329   C75268                        LD       $5268, A
- 649                                                          ;--5
- 650  00832C   C653EA                        LD       A, $53EA
- 651  00832F   C75269                        LD       $5269, A
- 652  008332   C653EB                        LD       A, $53EB
- 653  008335   C7526A                        LD       $526A, A
- 654                                                          ;--6
- 655  008338   C653EC                        LD       A, $53EC
- 656  00833B   C7526B                        LD       $526B, A
- 657  00833E   C653ED                        LD       A, $53ED
- 658  008341   C7526C                        LD       $526C, A
- 659                                                          ;--start ADC
- 660                                   startAdcSingleScan #$06
- 660  008344   C65400                        LD       A, $5400
- 660  008347   A47F                          AND      A, #$7F       ; clear EOC
- 660  008349   AA06                          OR       A, #$06
- 660  00834B   C75400                        LD       $5400, A
- 660  00834E   72105401                      BSET     $5401, #$00
- 661  008352                                 
- 662  008352   80                            IRET     
- 663                         
- 664  008353                                 interrupt NonHandledInterrupt
- 665                         NonHandledInterrupt.l  
- 666  008353   80                            iret     
- 667                                   segment  'vectit'
- 668  008000   82008080                      dc.l     {$82000000+main}  ; reset
- 669  008004   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; trap
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
-Page 19  Assembler
-                                               d:\stm8\dbg1\main.asm
-
- 670  008008   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq0
- 671  00800C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq1
- 672  008010   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq2
- 673  008014   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq3
- 674  008018   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq4
- 675  00801C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq5
- 676  008020   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq6
- 677  008024   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq7
- 678  008028   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq8
- 679  00802C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq9
- 680  008030   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq10
- 681  008034   8200830F                      dc.l     {$82000000+onTim1Update}  ; irq11
- 682  008038   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq12
- 683  00803C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq13
- 684  008040   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq14
- 685  008044   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq15
- 686  008048   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq16
- 687  00804C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq17
- 688  008050   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq18
- 689  008054   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq19
- 690  008058   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq20
- 691  00805C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq21
- 692  008060   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq22
- 693  008064   82008306                      dc.l     {$82000000+tim4Isr}  ; irq23
- 694  008068   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq24
- 695  00806C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq25
- 696  008070   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq26
- 697  008074   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq27
- 698  008078   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq28
- 699  00807C   82008353                      dc.l     {$82000000+NonHandledInterrupt}  ; irq29
- 700                         
- 701  008080                                 end      
-STMicroelectronics list file postprocessor v1.01   (C)2009-2024   Mon Aug 26 18:38:51 2024
-Page 20  Assembler
                                                d:\stm8\dbg1\main.asm
 
 Symbol Name                       Value     Call       Type  Scope      Rel.  Line  Privacy  Segment   Size  Bytes File
 
-NonHandledInterrupt               00008353  interrupt  LONG  Internal   ABS    665  private  text         1     0  -
+L_U1000_nsb                           8152         no  WORD  Internal   ABS    214  private  textdata    53     0  -
+L_U1001_nsb                           819D         no  WORD  Internal   ABS    282  private  textdata    53     0  -
+L_U1003_nsb                           81E8         no  WORD  Internal   ABS    352  private  textdata    61     0  -
 
-adcSingleModeSetup                    8280         no  WORD  Internal   ABS    478  private  text        27     0  -
-adcSingleScanModeSetup                829B         no  WORD  Internal   ABS    509  private  text        35     0  -
+NO_DATA_IN_TC                         8292         no  WORD  Internal   ABS    504  private  textdata     7     0  -
+NonHandledInterrupt               000082BF  interrupt  LONG  Internal   ABS    531  private  textdata     1     0  -
 
-clear_ram0                        00008087         no  LONG  Internal   ABS     17  private  text        10     0  -
-clear_ram1                        00008091         no  LONG  Internal   ABS     29  private  text        10     0  -
-clear_stack                       0000809B         no  LONG  Internal   ABS     40  private  text       180     0  -
-clkBusPeripherial1                    82BE         no  WORD  Internal   ABS    538  private  text         8     0  -
-clkBusPeripherial2                    82C6         no  WORD  Internal   ABS    548  private  text         8     0  -
-clkSwitchToCrystal                    82CE         no  WORD  Internal   ABS    557  private  text         6     0  -
-clkSwitchToCrystal_hsi_rdy            82D4         no  WORD  Internal   ABS    562  private  text        24     0  -
-clkSetHsiDivider                      82EC         no  WORD  Internal   ABS    587  private  text        13     0  -
-clkSetCpuDivider                      82F9         no  WORD  Internal   ABS    606  private  text        13     0  -
+WAIT_UNTIL_TC                         828D         no  WORD  Internal   ABS    501  private  textdata     5     0  -
 
-infinite_loop                     0000814F         no  LONG  Internal   ABS    158  private  text         3     0  -
+_RxPtr_                               0000         no  WORD  Internal   ABS      9  private  undef        0     0  -
+_TxPtr_                               0002         no  WORD  Internal   ABS     11  private  undef        0     0  -
+_semaphore                            0004         no  WORD  Internal   ABS     14  private  undef        0     0  -
+_RxBuffer32                           0010         no  WORD  Internal   ABS     16  private  undef        0     0  -
+_TxBuffer32                           0030         no  WORD  Internal   ABS     18  private  undef        0     0  -
+_received_char                        0050         no  WORD  Internal   ABS     20  private  undef        0     0  -
+_hello                                8080         no  WORD  Internal   ABS     25  private  textdata    14     1  -
+_last_rx_item                         8134         no  WORD  Internal   ABS    161  private  textdata     5     0  -
+_no_sym_reeived                       8139         no  WORD  Internal   ABS    166  private  textdata     3     0  -
+_NO_ERR_RX                            8288         no  WORD  Internal   ABS    498  private  textdata     5     0  -
+_NO_ERR_TX                            82B8         no  WORD  Internal   ABS    523  private  textdata     7     0  -
 
-main                              00008080         no  LONG  Internal   ABS      7  private  text         7     0  -
+clear_ram0                        00008095         no  LONG  Internal   ABS     37  private  textdata    10     0  -
+clear_ram1                        0000809F         no  LONG  Internal   ABS     49  private  textdata    10     0  -
+clear_stack                       000080A9         no  LONG  Internal   ABS     60  private  textdata   111     0  -
+clkBusPeripherial1                    8225         no  WORD  Internal   ABS    394  private  textdata     8     0  -
+clkBusPeripherial2                    822D         no  WORD  Internal   ABS    404  private  textdata     8     0  -
+clkSwitchToCrystal                    8235         no  WORD  Internal   ABS    413  private  textdata     6     0  -
+clkSwitchToCrystal_hsi_rdy            823B         no  WORD  Internal   ABS    418  private  textdata    21     0  -
+clkSetHsiDivider                      8250         no  WORD  Internal   ABS    440  private  textdata    13     0  -
+clkSetCpuDivider                      825D         no  WORD  Internal   ABS    459  private  textdata    13     0  -
 
-onTim1Update                          830F         no  WORD  Internal   ABS    634  private  text        68     0  -
+infinite_loop                     00008118         no  LONG  Internal   ABS    145  private  textdata    28     0  -
 
-ram0_start                              00         no  BYTE  Internal   ABS     14  private  text         0     0  -
-ram0_end                                FF         no  BYTE  Internal   ABS     15  private  text         0     0  -
-ram1_start                            0100         no  WORD  Internal   ABS     26  private  text         0     0  -
-ram1_end                              01FF         no  WORD  Internal   ABS     27  private  text         0     0  -
+main                              0000808E         no  LONG  Internal   ABS     27  private  textdata     7     0  -
 
-stack_start                           0200         no  WORD  Internal   ABS     37  private  text         0     0  -
-stack_end                             03FF         no  WORD  Internal   ABS     38  private  text         0     0  -
+onTim1Update                          826B         no  WORD  Internal   ABS    484  private  textdata     1     0  -
 
-tim1PwmCh1Setup                       8152         no  WORD  Internal   ABS    186  private  text        75     0  -
-tim1PwmCh2Setup                       819D         no  WORD  Internal   ABS    259  private  text        76     0  -
-tim1PwmCh3Setup                       81E9         no  WORD  Internal   ABS    330  private  text        75     0  -
-tim1PwmCh4Setup                       8234         no  WORD  Internal   ABS    402  private  text        76     0  -
-tim4Isr                               8306         no  WORD  Internal   ABS    626  private  text         9     0  -
+ram0_start                              00         no  BYTE  Internal   ABS     34  private  textdata     0     0  -
+ram0_end                                FF         no  BYTE  Internal   ABS     35  private  textdata     0     0  -
+ram1_start                            0100         no  WORD  Internal   ABS     46  private  textdata     0     0  -
+ram1_end                              01FF         no  WORD  Internal   ABS     47  private  textdata     0     0  -
+
+str1                                  0051         no  WORD  Internal   ABS     22  private  undef        0     0  -
+stack_start                           0200         no  WORD  Internal   ABS     57  private  textdata     0     0  -
+stack_end                             03FF         no  WORD  Internal   ABS     58  private  textdata     0     0  -
+
+tim4Isr                               826A         no  WORD  Internal   ABS    479  private  textdata     1     0  -
+
+uart1ReceiverSetup                    813C         no  WORD  Internal   ABS    193  private  textdata    22     0  -
+uart1TransmitterSetup                 8187         no  WORD  Internal   ABS    261  private  textdata    22     0  -
+uart1DuplexSetupIT                    81D2         no  WORD  Internal   ABS    331  private  textdata    22     0  -
+uart1OnReceive                        826C         no  WORD  Internal   ABS    487  private  textdata    28     0  -
+uart1OnTransmit                       8299         no  WORD  Internal   ABS    512  private  textdata    31     0  -
 
 
-26 labels
+42 labels
 No errors on assembly of 'd:\stm8\dbg1\main.asm'

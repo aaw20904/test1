@@ -2,8 +2,8 @@
 Segment List
 ------------
 
-d:\stm8\dbg1\main.asm[1]    6-  666      8080 -     8353                 'rom'  [text]
-d:\stm8\dbg1\main.asm[2]  667-  700      8000 -     807F                 'vectit'  [data]
+d:\stm8\dbg1\main.asm[2]   24-  532      8080 -     82BF                 'rom'  [textdata]
+d:\stm8\dbg1\main.asm[3]  533-  566      8000 -     807F                 'vectit'  [data]
 
 
 Class List
@@ -13,8 +13,9 @@ Class List
 0 '        ram1'   byte from      100 to       FF (lim      1FF) =  0% V
 0 '       stack'   byte from      200 to      1FF (lim      3FF) =  0% V
 0 '      eeprom'   byte from     4000 to     3FFF (lim     407F) =  0% V
-0 '         rom'   byte from     8080 to     8353 (lim     9FFF) =  8% C
+0 '         rom'   byte from     8080 to     82BF (lim     9FFF) =  7% CS
 0 '      vectit'   byte from     8000 to     807F (lim     807F) =100% S
+0 '    USER_RAM'   para from        0 to FFFFFFFF (lim FFFFFFFF) =  0% V
 
 
 
